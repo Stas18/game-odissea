@@ -34,7 +34,7 @@ class TeamService {
       chatId,
       teamName,
       captainId,
-      members: [],
+      members: [], // Участники изначально пустые
       points: 0,
       completedPoints: [],
       completedMiniQuests: [],
@@ -43,10 +43,10 @@ class TeamService {
       currentQuestion: 0,
       totalQuestions: 0,
       startTime: new Date().toISOString(),
-      waitingForMembers: true,
+      waitingForMembers: false, // Больше не ждем участников при регистрации
       waitingForBroadcast: false
     };
-    
+  
     this.teams.push(newTeam);
     this.saveTeams();
     return newTeam;

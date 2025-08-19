@@ -1,8 +1,14 @@
 const pointDescriptions = {
-  1: "Графская пристань",
-  2: "Площадь Нахимова",
-  3: "Театр Луначарского",
-  4: "Парк Победы"
+  1: "Название улицы",
+  2: "Название улицы",
+  3: "Название улицы",
+  4: "Название улицы",
+  5: "Название улицы",
+  6: "Название улицы",
+  7: "Название улицы",
+  8: "Название улицы",
+  9: "Название улицы",
+  10: "Название улицы"
 };
 
 function getPointDescription(pointId) {
@@ -14,7 +20,7 @@ function getKeyboard(points) {
     reply_markup: {
       inline_keyboard: points.map(point => [
         { 
-          text: `Точка ${point} - ${getPointDescription(point)}`, 
+          text: `Локация ${point} - ${getPointDescription(point)}`, 
           callback_data: `point_${point}` 
         }
       ])

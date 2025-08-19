@@ -37,23 +37,70 @@ const teamOptions = [
 // ======================
 
 bot.use(async (ctx, next) => {
-  const exemptRoutes = ['/start', 'team_', 'point_', 'answer_', '/admin', 'top_', 'reset_', 'begin_'];
+  if (services.team.isTeamRegistered(ctx.chat.id)) {
+    ctx.team = services.team.getTeam(ctx.chat.id);
+    
+    // Разрешаем доступ к меню если игра активна
+    if (services.admin.isGameActive) {
+      return next();
+    }
+  }
+  
+  const exemptRoutes = ['/start', 'team_', '/admin', 'top_', 'reset_'];
   const isExempt = exemptRoutes.some(route => 
     ctx.message?.text?.startsWith(route) || 
     ctx.callbackQuery?.data?.startsWith(route)
   );
 
-  if (isExempt || services.admin.isAdmin(ctx.from.id)) {
-    return next();
-  }
-  
-  // Проверяем, есть ли команда с таким chatId
-  const existingTeam = services.team.getTeam(ctx.chat.id);
-  if (!existingTeam) {
-    return ctx.reply(locales.registrationRequired, Markup.removeKeyboard());
+  if (!isExempt && !services.admin.isGameActive && !services.admin.isAdmin(ctx.from.id)) {
+    return ctx.reply(locales.gameNotStarted);
   }
   
   await next();
+});
+
+bot.hears(locales.gameStartButton, async (ctx) => {
+  if (!services.admin.isAdmin(ctx.from.id)) return;
+  const result = services.admin.setGameActive(true);
+  
+  await ctx.reply(result.adminMessage);
+  await handleAdminPanel(ctx);
+  
+  // Рассылаем уведомление всем командам
+  const teams = services.team.getAllTeams();
+  for (const team of teams) {
+    try {
+      await bot.telegram.sendMessage(
+        team.chatId,
+        result.broadcastMessage,
+        keyboards.mainMenu.getKeyboard(false, true) // isAdmin=false, isGameActive=true
+      );
+    } catch (err) {
+      console.error(`Ошибка отправки команде ${team.chatId}:`, err);
+    }
+  }
+});
+
+bot.hears(locales.gameStopButton, async (ctx) => {
+  if (!services.admin.isAdmin(ctx.from.id)) return;
+  const result = services.admin.setGameActive(false);
+  
+  await ctx.reply(result.adminMessage);
+  await handleAdminPanel(ctx);
+  
+  // Рассылаем уведомление всем командам
+  const teams = services.team.getAllTeams();
+  for (const team of teams) {
+    try {
+      await bot.telegram.sendMessage(
+        team.chatId,
+        result.broadcastMessage,
+        Markup.removeKeyboard()
+      );
+    } catch (err) {
+      console.error(`Ошибка отправки команде ${team.chatId}:`, err);
+    }
+  }
 });
 
 bot.use(async (ctx, next) => {
@@ -114,9 +161,23 @@ bot.action(/^answer_/, handleQuestionAnswer);
 
 async function handleStart(ctx) {
   if (services.team.isTeamRegistered(ctx.chat.id)) {
+    const team = services.team.getTeam(ctx.chat.id);
+    const isGameActive = services.admin.isGameActive;
+    
+    // Проверяем, ожидается ли ввод участников
+    if (team.waitingForMembers) {
+      return ctx.reply(
+        locales.addMembers,
+        Markup.removeKeyboard()
+      );
+    }
+    
     return ctx.reply(
       locales.alreadyRegistered,
-      keyboards.mainMenu.getKeyboard()
+      keyboards.mainMenu.getKeyboard(
+        services.admin.isAdmin(ctx.from.id),
+        isGameActive
+      )
     );
   }
 
@@ -136,12 +197,11 @@ async function handleTeamSelection(ctx) {
     return ctx.reply(locales.teamSelectionError);
   }
 
-  // Проверяем доступность имени команды
   if (!services.team.isTeamNameAvailable(selectedTeam.name)) {
     return ctx.reply(
       `❌ Команда "${selectedTeam.name}" уже зарегистрирована. Пожалуйста, выберите другое название.`,
       Markup.removeKeyboard()
-    ).then(() => handleStart(ctx)); // Возвращаем к выбору команды
+    ).then(() => handleStart(ctx));
   }
 
   const team = services.team.registerTeam(
@@ -155,20 +215,55 @@ async function handleTeamSelection(ctx) {
     Markup.removeKeyboard()
   );
   
-  await ctx.reply(
-    locales.membersAdded.replace('%s', selectedTeam.name),
-    Markup.keyboard([[Markup.button.text('▶ Начать квест')]])
-      .oneTime()
-      .resize()
-  );
+  // Устанавливаем флаг ожидания участников
+  services.team.updateTeam(ctx.chat.id, {
+    waitingForMembers: true,
+    waitingForBroadcast: false
+  });
   
-  await ctx.reply(locales.addMembers);
+  await ctx.reply(
+    locales.addMembers,
+    Markup.removeKeyboard() // Убираем клавиатуру для свободного ввода
+  );
 }
 
 async function handleBeginQuest(ctx) {
+  // Всегда проверяем активность игры
+  if (!services.admin.isGameActive && !services.admin.isAdmin(ctx.from.id)) {
+    return ctx.reply(locales.gameNotStarted);
+  }
+
   await ctx.reply(
     locales.startQuest,
-    keyboards.mainMenu.getKeyboard()
+    keyboards.mainMenu.getKeyboard(
+      services.admin.isAdmin(ctx.from.id),
+      services.admin.isGameActive
+    )
+  );
+}
+
+async function handleMembersInput(ctx) {
+  // Проверяем что мы действительно ожидаем ввода участников
+  if (!ctx.team?.waitingForMembers) {
+    return ctx.reply(locales.useMenuButtons);
+  }
+
+  const members = ctx.message.text
+    .split(',')
+    .map(name => name.trim())
+    .filter(name => name.length > 0);
+    
+  services.team.updateTeam(ctx.chat.id, {
+    members,
+    waitingForMembers: false // Сбрасываем флаг ожидания
+  });
+
+  await ctx.reply(
+    locales.membersAdded.replace('%s', members.join(', ') || 'не указаны'),
+    keyboards.mainMenu.getKeyboard(
+      services.admin.isAdmin(ctx.from.id),
+      services.admin.isGameActive
+    )
   );
 }
 
@@ -179,6 +274,11 @@ async function handlePointSelection(ctx) {
   
   if (availablePoints.length === 0) {
     return ctx.reply(locales.noPointsAvailable);
+  }
+  
+  // Разрешаем выбор точки, если игра активна ИЛИ команда уже начала играть
+  if (!services.admin.isGameActive && ctx.team?.completedPoints.length === 0) {
+    return ctx.reply(locales.gameNotStarted);
   }
   
   ctx.reply(
@@ -290,7 +390,10 @@ async function handleQuestionAnswer(ctx) {
         locales.pointCompleted
           .replace('%d', completedPointId)
           .replace('%d', ctx.team.points),
-        keyboards.mainMenu.getKeyboard()
+        keyboards.mainMenu.getKeyboard(
+          services.admin.isAdmin(ctx.from.id),
+          services.admin.isGameActive
+        )
       );
     }
   } else {
@@ -419,7 +522,7 @@ async function handleAdminPanel(ctx) {
   ctx.reply(
     locales.adminPanel,
     { 
-      ...keyboards.admin.getKeyboard(),
+      ...keyboards.admin.getKeyboard(services.admin.getGameStatus()),
       parse_mode: 'Markdown' 
     }
   );

@@ -4,7 +4,45 @@ const locales = require('../data/locales.json');
 
 class AdminService {
   constructor() {
-    this.admins = JSON.parse(process.env.ADMINS || '[1147849296]');
+    this.admins = JSON.parse(process.env.ADMINS || '[1147849296,863909091]');
+    this.gameStatusFile = path.join(__dirname, '../data/gameStatus.json');
+    this.isGameActive = this.loadGameStatus();
+  }
+  
+  loadGameStatus() {
+    try {
+      const data = fs.readFileSync(this.gameStatusFile, 'utf-8');
+      return JSON.parse(data).isGameActive || false;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  saveGameStatus() {
+    fs.writeFileSync(this.gameStatusFile, JSON.stringify({
+      isGameActive: this.isGameActive
+    }));
+  }
+
+  setGameActive(status) {
+    if (this.isGameActive === status) {
+      return status ? locales.gameAlreadyActive : locales.gameAlreadyInactive;
+    }
+    this.isGameActive = status;
+    this.saveGameStatus();
+  
+    const message = status 
+      ? "🚀 Игра началась! Можете приступать к прохождению точек!"
+      : "🛑 Игра приостановлена. Новые действия недоступны!";
+  
+    return { 
+      adminMessage: status ? locales.gameStarted : "Игра приостановлена",
+      broadcastMessage: message
+    };
+  }
+
+  getGameStatus() {
+    return this.isGameActive;
   }
 
   isAdmin(userId) {
