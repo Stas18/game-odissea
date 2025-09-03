@@ -1,10 +1,20 @@
 const fs = require('fs');
 const path = require('path');
 const locales = require('../data/locales.json');
+const questionsData = require('../data/questions.json');
+const questions = require('../data/questions.json');
 
 class TeamService {
   constructor() {
     this.teams = this.loadTeams();
+  }
+  
+  verifyCode(pointId, userInput) {
+    const point = questions.find(p => p.pointId === pointId);
+    if (!point) return false;
+    
+    // Проверяем совпадение без учета регистра
+    return userInput.toString().toLowerCase() === point.code.toString().toLowerCase();
   }
 
   loadTeams() {
@@ -106,12 +116,6 @@ class TeamService {
     return this.teams;
   }
 
-  verifyCode(pointId, code) {
-    const questions = require('../data/questions.json');
-    const point = questions.find(p => p.pointId === pointId);
-    return point && point.code === code;
-  }
-
   getGameTime(chatId) {
     const team = this.getTeam(chatId);
     if (!team) return locales.zeroTime;
@@ -151,15 +155,33 @@ class TeamService {
     return !this.teams.some(team => team.teamName === teamName);
   }
 
-  updateQuestionPoints(chatId, pointId, questionIndex, points) {
-  const team = this.getTeam(chatId);
-  if (team) {
-    if (!team.questionPoints) team.questionPoints = {};
-    const key = `${pointId}_${questionIndex}`;
-    team.questionPoints[key] = (team.questionPoints[key] || 10) + points;
-    this.saveTeams();
+  verifyAnswer(pointId, questionIndex, answer) {
+    const questions = require('../data/questions.json');
+    const point = questions.find(p => p.pointId === pointId);
+    
+    if (!point || !point.questions[questionIndex]) return false;
+    
+    const question = point.questions[questionIndex];
+    
+    // Если это карточки (массив options)
+    if (Array.isArray(question.options)) {
+      const answerIndex = parseInt(answer);
+      return !isNaN(answerIndex) && answerIndex === question.answer;
+    }
+    
+    // Если это текстовый ответ (строка options)
+    return answer.trim().toLowerCase() === question.options.toLowerCase();
   }
-}
+
+  updateQuestionPoints(chatId, pointId, questionIndex, points) {
+    const team = this.getTeam(chatId);
+    if (team) {
+      if (!team.questionPoints) team.questionPoints = {};
+      const key = `${pointId}_${questionIndex}`;
+      team.questionPoints[key] = (team.questionPoints[key] || 10) + points;
+      this.saveTeams();
+    }
+  }
 }
 
 module.exports = TeamService;

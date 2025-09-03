@@ -1,10 +1,18 @@
 module.exports = {
   getKeyboard: (isAdmin = false, isGameActive = false) => {
-    const buttons = [
-      isGameActive ? [{ text: '🌍 Выбрать точку' }] : [],
-      isGameActive ? [{ text: '🎲 Мини-квест' }, { text: '📊 Прогресс' }] : [],
-      [{ text: '🏆 Топ команд' }, { text: '📞 Помощь' }]
-    ].filter(arr => arr.length > 0);
+    let buttons = [];
+    
+    if (isGameActive) {
+      buttons = [
+        [{ text: '🌍 Выбрать точку' }],
+        [{ text: '🎲 Мини-квест' }, { text: '📊 Прогресс' }],
+        [{ text: '🏆 Топ команд' }, { text: 'ℹ️ Информация' }],
+      ];
+    } else {
+      buttons = [
+        [{ text: '🏆 Топ команд' }, { text: 'ℹ️ Информация' }],
+      ];
+    }
 
     if (isAdmin) {
       buttons.push([{ text: '👑 Админ-панель' }]);

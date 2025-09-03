@@ -1,6 +1,7 @@
-// bot.js
 const { Telegraf, Markup } = require('telegraf');
+
 require('dotenv').config();
+
 const TeamService = require('./services/TeamService');
 const QuestService = require('./services/QuestService');
 const AdminService = require('./services/AdminService');
@@ -122,7 +123,6 @@ bot.action(/^point_/, handlePointActivation);
 bot.hears('🎲 Мини-квест', handleMiniQuest);
 bot.hears('📊 Прогресс', handleProgress);
 bot.hears('🏆 Топ команд', handleTopTeams);
-bot.hears('📞 Помощь', handleHelp);
 bot.command('admin', handleAdminPanel);
 bot.hears('📊 Статистика', handleStats);
 bot.hears('🔄 Сбросить прогресс', handleResetConfirmation);
@@ -130,6 +130,7 @@ bot.hears('📢 Рассылка', handleBroadcast);
 bot.hears('🏆 Показать топ', handleTopTeams);
 bot.hears('⬅️ В главное меню', handleMainMenu);
 bot.hears('👑 Админ-панель', handleAdminPanel);
+bot.hears('ℹ️ Информация', handleInfo);
 bot.action('reset_confirm', handleResetConfirm);
 bot.action('reset_cancel', handleResetCancel);
 
@@ -138,6 +139,7 @@ bot.action('reset_cancel', handleResetCancel);
 // ======================
 
 bot.on('text', async (ctx) => {
+  // Проверяем приоритеты обработки
   if (ctx.team?.waitingForMembers) {
     return handleMembersInput(ctx);
   }
@@ -147,13 +149,147 @@ bot.on('text', async (ctx) => {
   if (ctx.team?.currentMiniQuest) {
     return handleMiniQuestAnswer(ctx);
   }
-  if (ctx.team?.currentPoint) {
-    return handlePointCode(ctx);
+  if (ctx.team?.currentPoint !== null && ctx.team?.currentPoint !== undefined) {
+    // Если есть активная точка, но вопросы еще не начались
+    if (ctx.team.currentQuestion === 0 && ctx.team.totalQuestions === 0) {
+      return handlePointCode(ctx);
+    }
+    // Если вопросы активны
+    if (ctx.team.currentQuestion !== undefined) {
+      const questions = require('./data/questions.json');
+      const point = questions.find(p => p.pointId === ctx.team.currentPoint);
+      const question = point.questions[ctx.team.currentQuestion];
+      
+      // Если это текстовый вопрос (не карточки)
+      if (!Array.isArray(question.options)) {
+        return handleTextQuestionAnswer(ctx);
+      }
+    }
   }
+  
   return ctx.reply(locales.useMenuButtons);
 });
 
+async function handleTextQuestionAnswer(ctx) {
+  const questions = require('./data/questions.json');
+  const point = questions.find(p => p.pointId === ctx.team.currentPoint);
+  const question = point.questions[ctx.team.currentQuestion];
+  
+  const isCorrect = services.team.verifyAnswer(
+    ctx.team.currentPoint,
+    ctx.team.currentQuestion,
+    ctx.message.text
+  );
+  
+  if (isCorrect) {
+    const key = `${ctx.team.currentPoint}_${ctx.team.currentQuestion}`;
+    const currentPoints = ctx.team.questionPoints?.[key] || 10;
+    
+    services.team.addPoints(ctx.chat.id, currentPoints);
+    await ctx.reply(locales.correctAnswer.replace('%d', currentPoints));
+    
+    // Переход к следующему вопросу или завершение точки
+    if (ctx.team.currentQuestion < point.questions.length - 1) {
+      services.team.updateTeam(ctx.chat.id, {
+        currentQuestion: ctx.team.currentQuestion + 1
+      });
+      await askQuestion(ctx, ctx.team.currentQuestion + 1);
+    } else {
+      const completedPointId = services.team.completePoint(
+        ctx.chat.id,
+        ctx.team.currentPoint
+      );
+      await ctx.reply(
+        locales.pointCompleted
+          .replace('%d', completedPointId)
+          .replace('%d', services.team.getTeam(ctx.chat.id).points),
+        keyboards.mainMenu.getKeyboard(
+          services.admin.isAdmin(ctx.from.id),
+          services.admin.isGameActive
+        )
+      );
+    }
+  } else {
+    // Логика для неправильного ответа
+    const key = `${ctx.team.currentPoint}_${ctx.team.currentQuestion}`;
+    const currentPoints = ctx.team.questionPoints?.[key] || 10;
+    const newPoints = Math.max(1, currentPoints - 3);
+    
+    services.team.updateQuestionPoints(
+      ctx.chat.id,
+      ctx.team.currentPoint,
+      ctx.team.currentQuestion,
+      -3
+    );
+    
+    await ctx.reply(
+      `❌ Неверно! Баллы за этот вопрос уменьшены до ${newPoints}. Попробуйте еще раз!`,
+      { parse_mode: 'Markdown' }
+    );
+    await askQuestion(ctx, ctx.team.currentQuestion);
+  }
+}
+
 bot.action(/^answer_/, handleQuestionAnswer);
+
+bot.action('contact_org', async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.reply("📞 Свяжитесь с организаторами: @GeekLS");
+});
+
+bot.action('contact_support', async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.reply("📞 *Свяжитесь с организаторами:*\n@GeekLS\n+7 (978) 7975 939", {
+    parse_mode: 'Markdown'
+  });
+});
+
+bot.action('visit_site', async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.reply("🌐 Посетите наш сайт: https://ulysses-club.github.io/odissea/");
+});
+
+bot.action('show_rules', async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.reply(
+    "🎯 *Правила квеста:*\n\n" +
+    "1. Находите коды в городе по загадкам\n" +
+    "2. Отвечайте на вопросы о кино (+10 баллов)\n" +
+    "3. Выполняйте мини-квесты (+5 баллов)\n" +
+    "4. Соревнуйтесь за первое место!\n\n" +
+    "⏱ *Время игры:* не ограничено\n" +
+    "👥 *Команда:* 2-100 человек\n\n" +
+    "«Играйте честно — как в настоящем кино!» 🎬",
+    { parse_mode: 'Markdown' }
+  );
+});
+
+bot.action(/^show_map_/, async (ctx) => {
+  const pointId = parseInt(ctx.callbackQuery.data.split('_')[2]);
+  const questions = require('./data/questions.json');
+  const point = questions.find(p => p.pointId === pointId);
+  
+  if (point && point.coordinates) {
+    await ctx.replyWithLocation(
+      point.coordinates.lat,
+      point.coordinates.lng,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{
+              text: '🗺️ Открыть в Google Maps',
+              url: `https://maps.google.com/?q=${point.coordinates.lat},${point.coordinates.lng}`
+            }],
+            [{
+              text: '📍 Открыть в Яндекс.Картах',
+              url: `https://yandex.ru/maps/?pt=${point.coordinates.lng},${point.coordinates.lat}&z=17&l=map`
+            }]
+          ]
+        }
+      }
+    );
+  }
+});
 
 // ======================
 // Функции обработчиков
@@ -164,11 +300,19 @@ async function handleStart(ctx) {
     const team = services.team.getTeam(ctx.chat.id);
     const isGameActive = services.admin.isGameActive;
     
-    // Проверяем, ожидается ли ввод участников
     if (team.waitingForMembers) {
       return ctx.reply(
         locales.addMembers,
         Markup.removeKeyboard()
+      );
+    }
+    
+    if (!isGameActive && !services.admin.isAdmin(ctx.from.id)) {
+      return ctx.reply(
+        locales.alreadyRegistered + "\n\n" + locales.gameNotStarted,
+        Markup.keyboard([
+          ['🏆 Топ команд', 'ℹ️ Информация'] // Обновленные кнопки
+        ]).resize()
       );
     }
     
@@ -190,6 +334,29 @@ async function handleStart(ctx) {
     Markup.inlineKeyboard(teamButtons, { columns: 2 })
   );
 }
+
+async function handleInfo(ctx) {
+  try {
+    // Отправляем основное информационное сообщение
+    await ctx.reply(locales.infoMessage, {
+      parse_mode: 'Markdown',
+      ...Markup.inlineKeyboard([
+        [
+          { text: '📞 Поддержка', callback_data: 'contact_support' },
+          { text: '🌐 Сайт', url: 'https://ulysses-club.github.io/odissea/' }
+        ],
+        [
+          { text: '🎬 О проекте', callback_data: 'about_project' },
+          { text: '📊 Правила', callback_data: 'show_rules' }
+        ]
+      ])
+    });
+  } catch (error) {
+    console.error('Error in handleInfo:', error);
+    await ctx.reply(locales.errorOccurred);
+  }
+}
+
 
 async function handleTeamSelection(ctx) {
   const selectedTeam = teamOptions.find(team => team.id === ctx.callbackQuery.data);
@@ -304,32 +471,69 @@ async function handlePointActivation(ctx) {
     console.log(`Фото для точки ${pointId} не найдено`);
   }
   
-  await ctx.reply(
-    locales.pointDescription
-      .replace('%d', pointId)
-      .replace('%s', keyboards.pointSelection.getPointDescription(pointId))
-      .replace('%s', locales.pointDescriptions[pointId]),
-    Markup.removeKeyboard()
-  );
+  // Получаем описание точки из locales
+  const pointDescription = locales.pointDescriptions[pointId] || "Интересная локация для киноманов";
   
+  // Создаем форматированное сообщение
+  const formattedMessage = 
+    `🎬 *Точка ${pointId}: ${keyboards.pointSelection.getPointDescription(pointId)}*\n\n` +
+    `📍 ${pointDescription}\n\n` +
+    `🔍 *Код для получения задания:*  \n` +
+    `${point.locationHint}\n\n` +
+    `📝 *Введите полученный код:*`;
+
+  // Получаем клавиатуру навигации
+  const navigationKeyboard = keyboards.pointSelection.getNavigationKeyboard(pointId);
+  
+  if (navigationKeyboard) {
+    await ctx.reply(formattedMessage, { 
+      parse_mode: 'Markdown',
+      ...navigationKeyboard
+    });
+  } else {
+    await ctx.reply(formattedMessage, { 
+      parse_mode: 'Markdown'
+    });
+  }
+  
+  // Устанавливаем правильные значения для ожидания кода
   services.team.updateTeam(ctx.chat.id, { 
     currentPoint: pointId,
+    currentQuestion: 0,        // Вопросы еще не начались
+    totalQuestions: 0,         // Вопросов еще нет (ждем код)
     waitingForMembers: false,
     waitingForBroadcast: false
   });
 }
+
+// validate-questions.js
+const questions = require('./data/questions.json');
+
+questions.forEach(question => {
+  const hint = question.locationHint.toLowerCase();
+  const code = question.code.toLowerCase();
+  
+  if (!hint.includes(code) && !hint.includes('ответ')) {
+    console.warn(`⚠️ Точка ${question.pointId}: подсказка не содержит код или указание на ответ`);
+  }
+});
 
 async function handlePointCode(ctx) {
   const code = ctx.message.text.trim();
   const team = ctx.team;
   
   if (services.team.verifyCode(team.currentPoint, code)) {
+    // Код верный - активируем вопросы
+    const questions = require('./data/questions.json');
+    const point = questions.find(p => p.pointId === team.currentPoint);
+    
     services.team.updateTeam(ctx.chat.id, {
       currentQuestion: 0,
-      totalQuestions: 3
+      totalQuestions: point.questions.length // Устанавливаем реальное количество вопросов
     });
     await askQuestion(ctx, 0);
   } else {
+    // Код неверный
     ctx.reply(locales.wrongCode);
   }
 }
@@ -343,22 +547,36 @@ async function askQuestion(ctx, questionIndex) {
   }
 
   const question = point.questions[questionIndex];
-  const options = question.options.map((option, i) => 
-    Markup.button.callback(option, `answer_${questionIndex}_${i}`)
-  );
 
-  // Получаем текущие баллы за вопрос
   const key = `${ctx.team.currentPoint}_${questionIndex}`;
   const currentPoints = ctx.team.questionPoints?.[key] || 10;
 
-  await ctx.reply(
-    locales.questionTemplate
-      .replace('%d', questionIndex + 1)
-      .replace('%d', point.questions.length)
-      .replace('%s', question.text) +
-    `\n\n*Доступно баллов за этот вопрос: ${currentPoints}*`,
-    Markup.inlineKeyboard(options, { columns: 1 })
-  );
+  // Если это вопрос с вариантами ответов
+  if (Array.isArray(question.options)) {
+    const options = question.options.map((option, i) => 
+      Markup.button.callback(option, `answer_${questionIndex}_${i}`)
+    );
+
+    await ctx.reply(
+      locales.questionTemplate
+        .replace('%d', questionIndex + 1)
+        .replace('%d', point.questions.length)
+        .replace('%s', question.text) +
+      `\n\n*Доступно баллов за этот вопрос: ${currentPoints}*`,
+      Markup.inlineKeyboard(options, { columns: 1 })
+    );
+  } else {
+    // Если это текстовый вопрос
+    await ctx.reply(
+      locales.questionTemplate
+        .replace('%d', questionIndex + 1)
+        .replace('%d', point.questions.length)
+        .replace('%s', question.text) +
+      `\n\n*Доступно баллов за этот вопрос: ${currentPoints}*\n\n` +
+      `📝 *Введите ваш ответ:*`,
+      { parse_mode: 'Markdown' }
+    );
+  }
 }
 
 async function handleQuestionAnswer(ctx) {
@@ -370,10 +588,16 @@ async function handleQuestionAnswer(ctx) {
   const key = `${ctx.team.currentPoint}_${questionIndex}`;
   const currentPoints = ctx.team.questionPoints?.[key] || 10;
 
-  if (answerIndex === question.answer) {
+  const isCorrect = services.team.verifyAnswer(
+    ctx.team.currentPoint, 
+    questionIndex, 
+    answerIndex.toString()
+  );
+
+  if (isCorrect) {
     services.team.addPoints(ctx.chat.id, currentPoints);
     await ctx.reply(
-      locales.correctAnswer.replace('+10', `+${currentPoints}`)
+      locales.correctAnswer.replace('%d', currentPoints)
     );
     
     if (questionIndex < point.questions.length - 1) {
@@ -397,7 +621,7 @@ async function handleQuestionAnswer(ctx) {
       );
     }
   } else {
-    // Уменьшаем баллы за этот вопрос на 3 за каждую ошибку (но не меньше 1)
+    // Уменьшаем баллы за этот вопрос
     const newPoints = Math.max(1, currentPoints - 3);
     services.team.updateQuestionPoints(
       ctx.chat.id, 
@@ -511,10 +735,6 @@ async function handleTopTeams(ctx) {
     true
   );
   await ctx.reply(topTeams, { parse_mode: 'Markdown' });
-}
-
-async function handleHelp(ctx) {
-  await ctx.reply(locales.helpMessage, { parse_mode: 'Markdown' });
 }
 
 async function handleAdminPanel(ctx) {
