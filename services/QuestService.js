@@ -7,7 +7,7 @@ class QuestService {
   }
 
   getAvailableMiniQuests(completedQuests = []) {
-    return miniQuests.filter(quest => 
+    return miniQuests.filter(quest =>
       !completedQuests.includes(quest.task)
     );
   }

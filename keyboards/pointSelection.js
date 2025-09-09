@@ -9,9 +9,9 @@ function getKeyboard(points) {
   return {
     reply_markup: {
       inline_keyboard: points.map(point => [
-        { 
-          text: `📍 Локация ${point} - ${getPointDescription(point)}`, 
-          callback_data: `point_${point}` 
+        {
+          text: `📍 Локация ${point} - ${getPointDescription(point)}`,
+          callback_data: `point_${point}`
         }
       ])
     }
@@ -21,7 +21,7 @@ function getKeyboard(points) {
 function getNavigationKeyboard(pointId) {
   const point = questions.find(p => p.pointId === pointId);
   if (!point || !point.coordinates) return null;
-  
+
   return {
     reply_markup: {
       inline_keyboard: [

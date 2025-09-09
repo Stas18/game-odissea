@@ -1,7 +1,7 @@
 module.exports = {
   getKeyboard: (isAdmin = false, isGameActive = false) => {
     let buttons = [];
-    
+
     if (isGameActive) {
       buttons = [
         [{ text: '🌍 Выбрать точку' }],

@@ -1,1 +1,31 @@
-[]
+[
+  {
+    "chatId": 1147849296,
+    "teamName": "Безумцы с попкорном",
+    "captainId": 1147849296,
+    "members": [
+      "Иван",
+      "Мария",
+      "Алексей"
+    ],
+    "points": 21,
+    "completedPoints": [
+      1,
+      2,
+      7
+    ],
+    "completedMiniQuests": [],
+    "currentPoint": null,
+    "currentMiniQuest": null,
+    "currentQuestion": 0,
+    "totalQuestions": 0,
+    "startTime": "2025-09-09T12:52:40.371Z",
+    "waitingForMembers": false,
+    "waitingForBroadcast": false,
+    "questionPoints": {
+      "1_0": 7,
+      "2_0": 7,
+      "7_0": 7
+    }
+  }
+]

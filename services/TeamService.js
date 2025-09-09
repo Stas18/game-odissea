@@ -1,29 +1,38 @@
-const fs = require('fs');
-const path = require('path');
-const locales = require('../data/locales.json');
-const questionsData = require('../data/questions.json');
-const questions = require('../data/questions.json');
+const fs = require("fs");
+const path = require("path");
+const locales = require("../data/locales.json");
+const questions = require("../data/questions.json");
 
 class TeamService {
   constructor() {
     this.teams = this.loadTeams();
   }
-  
+
   verifyCode(pointId, userInput) {
-    const point = questions.find(p => p.pointId === pointId);
+    const point = questions.find((p) => p.pointId === pointId);
     if (!point) return false;
-    
-    // Проверяем совпадение без учета регистра
-    return userInput.toString().toLowerCase() === point.code.toString().toLowerCase();
+
+    const normalizedInput = userInput
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+    const normalizedCode = point.code
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+
+    return normalizedInput === normalizedCode;
   }
 
   loadTeams() {
-    const filePath = path.join(__dirname, '../data/teams.json');
+    const filePath = path.join(__dirname, "../data/teams.json");
     try {
-      const data = fs.readFileSync(filePath, 'utf-8');
+      const data = fs.readFileSync(filePath, "utf-8");
       return JSON.parse(data) || [];
     } catch (err) {
-      if (err.code === 'ENOENT') {
+      if (err.code === "ENOENT") {
         return [];
       }
       console.error(locales.loadTeamsError, err);
@@ -32,7 +41,7 @@ class TeamService {
   }
 
   saveTeams() {
-    const filePath = path.join(__dirname, '../data/teams.json');
+    const filePath = path.join(__dirname, "../data/teams.json");
     fs.writeFileSync(filePath, JSON.stringify(this.teams, null, 2));
   }
 
@@ -54,20 +63,20 @@ class TeamService {
       totalQuestions: 0,
       startTime: new Date().toISOString(),
       waitingForMembers: false, // Больше не ждем участников при регистрации
-      waitingForBroadcast: false
+      waitingForBroadcast: false,
     };
-  
+
     this.teams.push(newTeam);
     this.saveTeams();
     return newTeam;
   }
 
   isTeamRegistered(chatId) {
-    return this.teams.some(team => team.chatId === chatId);
+    return this.teams.some((team) => team.chatId === chatId);
   }
 
   getTeam(chatId) {
-    return this.teams.find(team => team.chatId === chatId);
+    return this.teams.find((team) => team.chatId === chatId);
   }
 
   updateTeam(chatId, updates) {
@@ -126,16 +135,18 @@ class TeamService {
     const diffMins = Math.floor(diffMs / 60000);
     const hours = Math.floor(diffMins / 60);
     const mins = diffMins % 60;
-    
-    return hours > 0 ? `${hours}${locales.hours} ${mins}${locales.minutes}` : `${mins}${locales.minutes}`;
+
+    return hours > 0
+      ? `${hours}${locales.hours} ${mins}${locales.minutes}`
+      : `${mins}${locales.minutes}`;
   }
 
   getTeamProgress(chatId) {
     const team = this.getTeam(chatId);
     if (!team) return null;
 
-    const questions = require('../data/questions.json');
-    const miniQuests = require('../data/miniQuests.json');
+    const questions = require("../data/questions.json");
+    const miniQuests = require("../data/miniQuests.json");
 
     return {
       teamName: team.teamName,
@@ -143,32 +154,32 @@ class TeamService {
       members: team.members,
       points: team.points,
       completedPoints: team.completedPoints,
-      totalPoints: [...new Set(questions.map(q => q.pointId))].length,
+      totalPoints: [...new Set(questions.map((q) => q.pointId))].length,
       completedMiniQuests: team.completedMiniQuests,
       totalMiniQuests: miniQuests.length,
       startTime: team.startTime,
-      timeInGame: this.getGameTime(chatId)
+      timeInGame: this.getGameTime(chatId),
     };
   }
-  
+
   isTeamNameAvailable(teamName) {
-    return !this.teams.some(team => team.teamName === teamName);
+    return !this.teams.some((team) => team.teamName === teamName);
   }
 
   verifyAnswer(pointId, questionIndex, answer) {
-    const questions = require('../data/questions.json');
-    const point = questions.find(p => p.pointId === pointId);
-    
+    const questions = require("../data/questions.json");
+    const point = questions.find((p) => p.pointId === pointId);
+
     if (!point || !point.questions[questionIndex]) return false;
-    
+
     const question = point.questions[questionIndex];
-    
+
     // Если это карточки (массив options)
     if (Array.isArray(question.options)) {
       const answerIndex = parseInt(answer);
       return !isNaN(answerIndex) && answerIndex === question.answer;
     }
-    
+
     // Если это текстовый ответ (строка options)
     return answer.trim().toLowerCase() === question.options.toLowerCase();
   }

@@ -8,7 +8,7 @@ class AdminService {
     this.gameStatusFile = path.join(__dirname, '../data/gameStatus.json');
     this.isGameActive = this.loadGameStatus();
   }
-  
+
   loadGameStatus() {
     try {
       const data = fs.readFileSync(this.gameStatusFile, 'utf-8');
@@ -30,12 +30,12 @@ class AdminService {
     }
     this.isGameActive = status;
     this.saveGameStatus();
-  
-    const message = status 
+
+    const message = status
       ? "🚀 Игра началась! Можете приступать к прохождению точек!"
       : "🛑 Игра приостановлена. Новые действия недоступны!";
-  
-    return { 
+
+    return {
       adminMessage: status ? locales.gameStarted : "Игра приостановлена",
       broadcastMessage: message
     };
@@ -54,7 +54,7 @@ class AdminService {
     for (const team of teams) {
       try {
         await bot.telegram.sendMessage(
-          team.chatId, 
+          team.chatId,
           `📢 ${locales.broadcastMessage.replace('%s', message)}`,
           { parse_mode: 'Markdown' }
         );
@@ -68,9 +68,9 @@ class AdminService {
 
   resetAllTeams(teamService) {
     const teamsWithProgress = teamService.teams.filter(
-      team => team.points > 0 || 
-             team.completedPoints.length > 0 || 
-             team.completedMiniQuests.length > 0
+      team => team.points > 0 ||
+        team.completedPoints.length > 0 ||
+        team.completedMiniQuests.length > 0
     );
     const chatIds = teamsWithProgress.map(team => team.chatId);
 
@@ -105,17 +105,17 @@ class AdminService {
       .filter(team => showAll || team.completedPoints.length > 0)
       .map((team, index) => {
         const timeInGame = this.formatGameTime(team.startTime);
-        const progress = team.completedPoints.length >= totalPoints ? 
-          locales.questCompleted : 
+        const progress = team.completedPoints.length >= totalPoints ?
+          locales.questCompleted :
           `${locales.pointsProgress.replace('%d', team.completedPoints.length).replace('%d', totalPoints)}`;
-        
+
         return `*${index + 1}. ${team.teamName}* - ${team.points} ${locales.points}\n` +
-               `   ${progress} | ⏱ ${timeInGame}`;
+          `   ${progress} | ⏱ ${timeInGame}`;
       })
       .join('\n\n');
 
     return `${locales.topTeamsHeader}\n\n${topTeams || locales.noData}\n\n` +
-           `${locales.totalStats.replace('%d', totalPoints).replace('%d', totalMiniQuests)}`;
+      `${locales.totalStats.replace('%d', totalPoints).replace('%d', totalMiniQuests)}`;
   }
 
   formatGameTime(startTime) {
@@ -125,7 +125,7 @@ class AdminService {
     const diffMins = Math.floor(diffMs / 60000);
     const hours = Math.floor(diffMins / 60);
     const mins = diffMins % 60;
-    
+
     return hours > 0 ? `${hours}${locales.hours} ${mins}${locales.minutes}` : `${mins}${locales.minutes}`;
   }
 
@@ -133,13 +133,13 @@ class AdminService {
     const stats = teams.map(team => {
       const timeInGame = this.formatGameTime(team.startTime);
       return `*${team.teamName}* (ID: ${team.chatId}):\n` +
-             `${locales.captain}: ${team.captainId}\n` +
-             `${locales.members}: ${team.members.join(', ') || locales.none}\n` +
-             `${locales.points}: ${team.points}\n` +
-             `${locales.completedPoints}: ${team.completedPoints.join(', ') || locales.none}\n` +
-             `${locales.completedMiniQuests}: ${team.completedMiniQuests.length}\n` +
-             `${locales.timeInGame}: ${timeInGame}\n` +
-             `${locales.startTime}: ${new Date(team.startTime).toLocaleString()}`;
+        `${locales.captain}: ${team.captainId}\n` +
+        `${locales.members}: ${team.members.join(', ') || locales.none}\n` +
+        `${locales.points}: ${team.points}\n` +
+        `${locales.completedPoints}: ${team.completedPoints.join(', ') || locales.none}\n` +
+        `${locales.completedMiniQuests}: ${team.completedMiniQuests.length}\n` +
+        `${locales.timeInGame}: ${timeInGame}\n` +
+        `${locales.startTime}: ${new Date(team.startTime).toLocaleString()}`;
     }).join('\n\n────────────────\n');
 
     return `${locales.fullStatsHeader.replace('%d', teams.length)}\n\n${stats || locales.noData}`;
