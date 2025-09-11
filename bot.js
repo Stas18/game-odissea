@@ -20,6 +20,53 @@ const services = {
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
+// ======================
+// Функции для проверки временных интервалов
+// ======================
+
+const PENALTIES = {
+  WRONG_ANSWER: 1,
+  TOO_FAST_ANSWER: 3,
+  MIN_TIME_BETWEEN_ANSWERS: 71 // 1 минута 11 секунд в секундах
+};
+
+async function checkTimePenalty(ctx, questionIndex) {
+  let referenceTime;
+  
+  if (questionIndex === 0) {
+    // Для первого вопроса сравниваем с временем активации точки
+    referenceTime = new Date(ctx.team.pointActivationTime);
+  } else {
+    // Для последующих - с временем последнего ответа
+    // Если по какой-то причине его нет, используем время активации
+    referenceTime = new Date(ctx.team.lastAnswerTime || ctx.team.pointActivationTime);
+  }
+  
+  const now = new Date();
+  const timeDiff = (now - referenceTime) / 1000;
+  
+  if (timeDiff < PENALTIES.MIN_TIME_BETWEEN_ANSWERS) {
+    services.team.addPoints(ctx.chat.id, -PENALTIES.TOO_FAST_ANSWER);
+    await ctx.reply(getRandomTooFastMessage(), { parse_mode: "Markdown" });
+    return true;
+  }
+  return false;
+}
+
+// Получение случайного сообщения о слишком быстром ответе
+function getRandomTooFastMessage() {
+  return locales.penaltyMessages.tooFast[
+    Math.floor(Math.random() * locales.penaltyMessages.tooFast.length)
+  ];
+}
+
+// Получение случайного сообщения о неправильном ответе
+function getRandomWrongAnswerMessage() {
+  return locales.penaltyMessages.wrongAnswer[
+    Math.floor(Math.random() * locales.penaltyMessages.wrongAnswer.length)
+  ];
+}
+
 // Список команд для регистрации
 const teamOptions = [
   { name: "Безумцы с попкорном", id: "team_1" },
@@ -183,18 +230,27 @@ async function handleTextQuestionAnswer(ctx) {
     return ctx.reply(locales.questionNotFound);
   }
 
+  // Проверяем временной интервал и применяем штраф если нужно
+  const hasPenalty = await checkTimePenalty(ctx, ctx.team.currentQuestion);
+
   const isCorrect = services.team.verifyAnswer(
     ctx.team.currentPoint,
     ctx.team.currentQuestion,
     ctx.message.text
   );
 
+  // Обновляем время ответа
+  services.team.updateLastAnswerTime(ctx.chat.id, new Date().toISOString());
+
   if (isCorrect) {
     const key = `${ctx.team.currentPoint}_${ctx.team.currentQuestion}`;
     const currentPoints = ctx.team.questionPoints?.[key] || 10;
 
-    services.team.addPoints(ctx.chat.id, currentPoints);
-    await ctx.reply(locales.correctAnswer.replace("%d", currentPoints));
+    // Если был штраф, начисляем меньше баллов
+    const finalPoints = hasPenalty ? Math.max(1, currentPoints - PENALTIES.TOO_FAST_ANSWER) : currentPoints;
+
+    services.team.addPoints(ctx.chat.id, finalPoints);
+    await ctx.reply(locales.correctAnswer.replace("%d", finalPoints));
 
     // Переход к следующему вопросу или завершение точки
     if (ctx.team.currentQuestion < point.questions.length - 1) {
@@ -218,20 +274,10 @@ async function handleTextQuestionAnswer(ctx) {
       );
     }
   } else {
-    // Логика для неправильного ответа
-    const key = `${ctx.team.currentPoint}_${ctx.team.currentQuestion}`;
-    const currentPoints = ctx.team.questionPoints?.[key] || 10;
-    const newPoints = Math.max(1, currentPoints - 3);
-
-    services.team.updateQuestionPoints(
-      ctx.chat.id,
-      ctx.team.currentPoint,
-      ctx.team.currentQuestion,
-      -3
-    );
-
+    // Штраф за неправильный ответ
+    services.team.addPoints(ctx.chat.id, -PENALTIES.WRONG_ANSWER);
     await ctx.reply(
-      `❌ Неверно! Баллы за этот вопрос уменьшены до ${newPoints}. Попробуйте еще раз!`,
+      getRandomWrongAnswerMessage(),
       { parse_mode: "Markdown" }
     );
     await askQuestion(ctx, ctx.team.currentQuestion);
@@ -266,13 +312,13 @@ bot.action("show_rules", async (ctx) => {
   await ctx.answerCbQuery();
   await ctx.reply(
     "🎯 *Правила квеста:*\n\n" +
-      "1. Находите коды в городе по загадкам\n" +
-      "2. Отвечайте на вопросы о кино (+10 баллов)\n" +
-      "3. Выполняйте мини-квесты (+5 баллов)\n" +
-      "4. Соревнуйтесь за первое место!\n\n" +
-      "⏱ *Время игры:* не ограничено\n" +
-      "👥 *Команда:* 2-100 человек\n\n" +
-      "«Играйте честно — как в настоящем кино!» 🎬",
+    "1. Находите коды в городе по загадкам\n" +
+    "2. Отвечайте на вопросы о кино (+10 баллов)\n" +
+    "3. Выполняйте мини-квесты (+5 баллов)\n" +
+    "4. Соревнуйтесь за первое место!\n\n" +
+    "⏱ *Время игры:* не ограничено\n" +
+    "👥 *Команда:* 2-100 человек\n\n" +
+    "«Играйте честно — как в настоящем кино!» 🎬",
     { parse_mode: "Markdown" }
   );
 });
@@ -592,10 +638,11 @@ async function handlePointActivation(ctx) {
   // Устанавливаем правильные значения для ожидания кода
   services.team.updateTeam(ctx.chat.id, {
     currentPoint: pointId,
-    currentQuestion: 0, // Вопросы еще не начались
-    totalQuestions: 0, // Вопросов еще нет (ждем код)
+    currentQuestion: 0,
+    totalQuestions: 0,
     waitingForMembers: false,
     waitingForBroadcast: false,
+    lastAnswerTime: null // Сбрасываем время при активации новой точки
   });
 }
 
@@ -624,7 +671,9 @@ async function handlePointCode(ctx) {
 
     services.team.updateTeam(ctx.chat.id, {
       currentQuestion: 0,
-      totalQuestions: point.questions.length, // Устанавливаем реальное количество вопросов
+      totalQuestions: point.questions.length,
+      lastAnswerTime: new Date().toISOString(),
+      pointActivationTime: new Date().toISOString() // <-- Фиксируем время активации
     });
     await askQuestion(ctx, 0);
   } else {
@@ -657,7 +706,7 @@ async function askQuestion(ctx, questionIndex) {
         .replace("%d", questionIndex + 1)
         .replace("%d", point.questions.length)
         .replace("%s", question.text) +
-        `\n\n*Доступно баллов за этот вопрос: ${currentPoints}*`,
+      `\n\n*Доступно баллов за этот вопрос: ${currentPoints}*`,
       Markup.inlineKeyboard(options, { columns: 1 })
     );
   } else {
@@ -667,8 +716,8 @@ async function askQuestion(ctx, questionIndex) {
         .replace("%d", questionIndex + 1)
         .replace("%d", point.questions.length)
         .replace("%s", question.text) +
-        `\n\n*Доступно баллов за этот вопрос: ${currentPoints}*\n\n` +
-        `📝 *Введите ваш ответ:*`,
+      `\n\n*Доступно баллов за этот вопрос: ${currentPoints}*\n\n` +
+      `📝 *Введите ваш ответ:*`,
       { parse_mode: "Markdown" }
     );
   }
@@ -685,15 +734,24 @@ async function handleQuestionAnswer(ctx) {
   const key = `${ctx.team.currentPoint}_${questionIndex}`;
   const currentPoints = ctx.team.questionPoints?.[key] || 10;
 
+  // Проверяем временной интервал и применяем штраф если нужно
+  const hasPenalty = await checkTimePenalty(ctx, questionIndex);
+
   const isCorrect = services.team.verifyAnswer(
     ctx.team.currentPoint,
     questionIndex,
     answerIndex.toString()
   );
 
+  // Обновляем время ответа
+  services.team.updateLastAnswerTime(ctx.chat.id, new Date().toISOString());
+
   if (isCorrect) {
-    services.team.addPoints(ctx.chat.id, currentPoints);
-    await ctx.reply(locales.correctAnswer.replace("%d", currentPoints));
+    // Если был штраф, начисляем меньше баллов
+    const finalPoints = hasPenalty ? Math.max(1, currentPoints - PENALTIES.TOO_FAST_ANSWER) : currentPoints;
+
+    services.team.addPoints(ctx.chat.id, finalPoints);
+    await ctx.reply(locales.correctAnswer.replace("%d", finalPoints));
 
     if (questionIndex < point.questions.length - 1) {
       services.team.updateTeam(ctx.chat.id, {
@@ -708,7 +766,7 @@ async function handleQuestionAnswer(ctx) {
       await ctx.reply(
         locales.pointCompleted
           .replace("%d", completedPointId)
-          .replace("%d", ctx.team.points),
+          .replace("%d", services.team.getTeam(ctx.chat.id).points),
         keyboards.mainMenu.getKeyboard(
           services.admin.isAdmin(ctx.from.id),
           services.admin.isGameActive
@@ -716,17 +774,10 @@ async function handleQuestionAnswer(ctx) {
       );
     }
   } else {
-    // Уменьшаем баллы за этот вопрос
-    const newPoints = Math.max(1, currentPoints - 3);
-    services.team.updateQuestionPoints(
-      ctx.chat.id,
-      ctx.team.currentPoint,
-      questionIndex,
-      -3
-    );
-
+    // Штраф за неправильный ответ
+    services.team.addPoints(ctx.chat.id, -PENALTIES.WRONG_ANSWER);
     await ctx.reply(
-      `❌ Неверно! Баллы за этот вопрос уменьшены до ${newPoints}. Попробуйте еще раз!`,
+      getRandomWrongAnswerMessage(),
       { parse_mode: "Markdown" }
     );
     await askQuestion(ctx, questionIndex);

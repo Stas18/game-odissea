@@ -6,6 +6,13 @@ const questions = require("../data/questions.json");
 class TeamService {
   constructor() {
     this.teams = this.loadTeams();
+    // Инициализируем questionPoints для каждой команды
+    this.teams.forEach(team => {
+      if (!team.questionPoints) {
+        team.questionPoints = {};
+      }
+    });
+    this.saveTeams(); // Сохраняем изменения
   }
 
   verifyCode(pointId, userInput) {
@@ -53,7 +60,7 @@ class TeamService {
       chatId,
       teamName,
       captainId,
-      members: [], // Участники изначально пустые
+      members: [],
       points: 0,
       completedPoints: [],
       completedMiniQuests: [],
@@ -62,8 +69,10 @@ class TeamService {
       currentQuestion: 0,
       totalQuestions: 0,
       startTime: new Date().toISOString(),
-      waitingForMembers: false, // Больше не ждем участников при регистрации
+      waitingForMembers: false,
       waitingForBroadcast: false,
+      lastAnswerTime: null,
+      questionPoints: {}
     };
 
     this.teams.push(newTeam);
@@ -192,6 +201,16 @@ class TeamService {
       team.questionPoints[key] = (team.questionPoints[key] || 10) + points;
       this.saveTeams();
     }
+  }
+
+  updateLastAnswerTime(chatId, time) {
+    const team = this.getTeam(chatId);
+    if (team) {
+      team.lastAnswerTime = time;
+      this.saveTeams();
+      return true;
+    }
+    return false;
   }
 }
 

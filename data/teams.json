@@ -4,28 +4,27 @@
     "teamName": "Безумцы с попкорном",
     "captainId": 1147849296,
     "members": [
-      "Иван",
-      "Мария",
-      "Алексей"
+      "-"
     ],
-    "points": 21,
+    "points": 54,
     "completedPoints": [
       1,
       2,
-      7
+      3,
+      4,
+      5,
+      6
     ],
     "completedMiniQuests": [],
-    "currentPoint": null,
+    "currentPoint": 7,
     "currentMiniQuest": null,
     "currentQuestion": 0,
-    "totalQuestions": 0,
-    "startTime": "2025-09-09T12:52:40.371Z",
+    "totalQuestions": 1,
+    "startTime": "2025-09-11T16:29:35.781Z",
     "waitingForMembers": false,
     "waitingForBroadcast": false,
-    "questionPoints": {
-      "1_0": 7,
-      "2_0": 7,
-      "7_0": 7
-    }
+    "lastAnswerTime": "2025-09-11T16:42:11.189Z",
+    "questionPoints": {},
+    "pointActivationTime": "2025-09-11T16:42:11.189Z"
   }
 ]
