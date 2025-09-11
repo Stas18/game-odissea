@@ -192,7 +192,6 @@ bot.action("reset_cancel", handleResetCancel);
 // ======================
 
 bot.on("text", async (ctx) => {
-  // Проверяем приоритеты обработки
   if (ctx.team?.waitingForMembers) {
     return handleMembersInput(ctx);
   }
@@ -202,13 +201,12 @@ bot.on("text", async (ctx) => {
   if (ctx.team?.currentMiniQuest) {
     return handleMiniQuestAnswer(ctx);
   }
+  // Добавить проверку на активную точку без активных вопросов
+  if (ctx.team?.currentPoint !== null && ctx.team?.currentPoint !== undefined && 
+      ctx.team.currentQuestion === 0 && ctx.team.totalQuestions === 0) {
+    return handlePointCode(ctx);
+  }
   if (ctx.team?.currentPoint !== null && ctx.team?.currentPoint !== undefined) {
-    // Если есть активная точка, но вопросы еще не начались
-    if (ctx.team.currentQuestion === 0 && ctx.team.totalQuestions === 0) {
-      return handlePointCode(ctx);
-    }
-    // Если вопросы активны
-    if (ctx.team.currentQuestion !== undefined) {
       const questions = require("./data/questions.json");
       const point = questions.find((p) => p.pointId === ctx.team.currentPoint);
       const question = point.questions[ctx.team.currentQuestion];
@@ -218,7 +216,7 @@ bot.on("text", async (ctx) => {
         return handleTextQuestionAnswer(ctx);
       }
     }
-  }
+  
 
   return ctx.reply(locales.useMenuButtons);
 });
@@ -578,14 +576,17 @@ async function handlePointSelection(ctx) {
     return ctx.reply(locales.noPointsAvailable);
   }
 
-  // Разрешаем выбор точки, если игра активна ИЛИ команда уже начала играть
-  if (!services.admin.isGameActive && ctx.team?.completedPoints.length === 0) {
-    return ctx.reply(locales.gameNotStarted);
-  }
+  // Создаем кнопки для выбора точек
+  const pointButtons = availablePoints.map(pointId => 
+    Markup.button.callback(
+      `📍 Точка ${pointId} - ${keyboards.pointSelection.getPointDescription(pointId)}`,
+      `point_${pointId}`
+    )
+  );
 
-  ctx.reply(
+  await ctx.reply(
     locales.selectPoint,
-    keyboards.pointSelection.getKeyboard(availablePoints)
+    Markup.inlineKeyboard(pointButtons, { columns: 1 })
   );
 }
 
@@ -604,26 +605,18 @@ async function handlePointActivation(ctx) {
     });
   } catch (err) {
     console.log(`Фото для точки ${pointId} не найдено, продолжаем без фото`);
-    // Можно отправить сообщение, что фото временно недоступно
   }
 
-  // Получаем описание точки из объекта point (если есть) или используем локали как fallback
-  const pointDescription =
-    point.description ||
-    locales.pointDescriptions[pointId] ||
-    "Интересная локация для киноманов";
-
-  // Создаем форматированное сообщение
+  // Отправляем описание точки и инструкцию по вводу кода
   const formattedMessage =
-    `🎬 ${keyboards.pointSelection.getPointDescription(pointId)}*\n\n` +
-    `📍 ${pointDescription}\n\n` +
-    `🔍 *Код для получения задания:*  \n` +
+    `🎬 *${keyboards.pointSelection.getPointDescription(pointId)}*\n\n` +
+    `📍 ${point.description}\n\n` +
+    `🔍 *Подсказка для кода:*\n` +
     `${point.locationHint}\n\n` +
     `📝 *Введите полученный код:*`;
 
   // Получаем клавиатуру навигации
-  const navigationKeyboard =
-    keyboards.pointSelection.getNavigationKeyboard(pointId);
+  const navigationKeyboard = keyboards.pointSelection.getNavigationKeyboard(pointId);
 
   if (navigationKeyboard) {
     await ctx.reply(formattedMessage, {
@@ -636,14 +629,14 @@ async function handlePointActivation(ctx) {
     });
   }
 
-  // Устанавливаем правильные значения для ожидания кода
+  // Устанавливаем текущую точку и сбрасываем состояние вопросов
   services.team.updateTeam(ctx.chat.id, {
     currentPoint: pointId,
     currentQuestion: 0,
     totalQuestions: 0,
     waitingForMembers: false,
     waitingForBroadcast: false,
-    lastAnswerTime: null // Сбрасываем время при активации новой точки
+    lastAnswerTime: null
   });
 }
 

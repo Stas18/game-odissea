@@ -4,29 +4,25 @@
     "teamName": "Безумцы с попкорном",
     "captainId": 1147849296,
     "members": [
-      "-"
+      "Тони Старк",
+      "Брюс Уэйн",
+      "Питер Паркер"
     ],
-    "points": 67,
+    "points": 8,
     "completedPoints": [
       1,
-      2,
-      3,
-      4,
-      5,
-      6,
-      7,
-      8
+      2
     ],
     "completedMiniQuests": [],
     "currentPoint": null,
     "currentMiniQuest": null,
     "currentQuestion": 0,
     "totalQuestions": 0,
-    "startTime": "2025-09-11T16:29:35.781Z",
+    "startTime": "2025-09-11T17:42:20.031Z",
     "waitingForMembers": false,
     "waitingForBroadcast": false,
-    "lastAnswerTime": "2025-09-11T16:49:45.608Z",
+    "lastAnswerTime": "2025-09-11T17:43:01.208Z",
     "questionPoints": {},
-    "pointActivationTime": "2025-09-11T16:48:19.189Z"
+    "pointActivationTime": "2025-09-11T17:42:55.523Z"
   }
 ]
