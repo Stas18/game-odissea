@@ -101,5 +101,6 @@
       "❌ Мимо! -1 балл. Сосредоточься!\n\nКак в 'Матрице': 'There is no spoon... but there is a right answer!'",
       "❌ Не угадали! -1 балл. Думайте как Шерлок!\n\n'Elementary, my dear Watson!'"
     ]
-  }
+  },
+  "wrongCodePenalty": "❌ Неверный код! -%d балл за попытку. Попробуй еще раз!"
 }

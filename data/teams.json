@@ -6,25 +6,27 @@
     "members": [
       "-"
     ],
-    "points": 54,
+    "points": 67,
     "completedPoints": [
       1,
       2,
       3,
       4,
       5,
-      6
+      6,
+      7,
+      8
     ],
     "completedMiniQuests": [],
-    "currentPoint": 7,
+    "currentPoint": null,
     "currentMiniQuest": null,
     "currentQuestion": 0,
-    "totalQuestions": 1,
+    "totalQuestions": 0,
     "startTime": "2025-09-11T16:29:35.781Z",
     "waitingForMembers": false,
     "waitingForBroadcast": false,
-    "lastAnswerTime": "2025-09-11T16:42:11.189Z",
+    "lastAnswerTime": "2025-09-11T16:49:45.608Z",
     "questionPoints": {},
-    "pointActivationTime": "2025-09-11T16:42:11.189Z"
+    "pointActivationTime": "2025-09-11T16:48:19.189Z"
   }
 ]

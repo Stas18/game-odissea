@@ -21,12 +21,13 @@ const services = {
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 // ======================
-// Функции для проверки временных интервалов
+// Функции для проверки временных интервалов, константы для штрафа за код
 // ======================
 
 const PENALTIES = {
   WRONG_ANSWER: 1,
   TOO_FAST_ANSWER: 3,
+  WRONG_CODE: 1, // Штраф за неправильный код
   MIN_TIME_BETWEEN_ANSWERS: 71 // 1 минута 11 секунд в секундах
 };
 
@@ -673,12 +674,18 @@ async function handlePointCode(ctx) {
       currentQuestion: 0,
       totalQuestions: point.questions.length,
       lastAnswerTime: new Date().toISOString(),
-      pointActivationTime: new Date().toISOString() // <-- Фиксируем время активации
+      pointActivationTime: new Date().toISOString()
     });
     await askQuestion(ctx, 0);
   } else {
-    // Код неверный
-    ctx.reply(locales.wrongCode);
+    // Код неверный - применяем штраф
+    services.team.addPoints(ctx.chat.id, -PENALTIES.WRONG_CODE);
+    
+    // Отправляем сообщение со штрафом
+    await ctx.reply(
+      locales.wrongCodePenalty.replace("%d", PENALTIES.WRONG_CODE),
+      { parse_mode: "Markdown" }
+    );
   }
 }
 
