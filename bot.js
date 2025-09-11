@@ -615,7 +615,7 @@ async function handlePointActivation(ctx) {
 
   // Создаем форматированное сообщение
   const formattedMessage =
-    `🎬 *Точка ${pointId}: ${keyboards.pointSelection.getPointDescription(pointId)}*\n\n` +
+    `🎬 ${keyboards.pointSelection.getPointDescription(pointId)}*\n\n` +
     `📍 ${pointDescription}\n\n` +
     `🔍 *Код для получения задания:*  \n` +
     `${point.locationHint}\n\n` +
