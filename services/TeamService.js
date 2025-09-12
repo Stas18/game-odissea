@@ -193,12 +193,16 @@ class TeamService {
     return answer.trim().toLowerCase() === question.options.toLowerCase();
   }
 
-  updateQuestionPoints(chatId, pointId, questionIndex, points) {
+  updateQuestionPoints(chatId, pointId, questionIndex, pointsDelta) {
     const team = this.getTeam(chatId);
     if (team) {
       if (!team.questionPoints) team.questionPoints = {};
       const key = `${pointId}_${questionIndex}`;
-      team.questionPoints[key] = (team.questionPoints[key] || 10) + points;
+
+      // Гарантируем минимальное значение 1 балл
+      const newPoints = Math.max(1, (team.questionPoints[key] || PENALTIES.BASE_QUESTION_POINTS) + pointsDelta);
+      team.questionPoints[key] = newPoints;
+
       this.saveTeams();
     }
   }

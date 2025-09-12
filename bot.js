@@ -27,19 +27,17 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 const PENALTIES = {
   WRONG_ANSWER: 1,
   TOO_FAST_ANSWER: 3,
-  WRONG_CODE: 1, // Штраф за неправильный код
-  MIN_TIME_BETWEEN_ANSWERS: 71 // 1 минута 11 секунд в секундах
+  WRONG_CODE: 1,
+  MIN_TIME_BETWEEN_ANSWERS: 71,
+  BASE_QUESTION_POINTS: 10
 };
 
 async function checkTimePenalty(ctx, questionIndex) {
   let referenceTime;
   
   if (questionIndex === 0) {
-    // Для первого вопроса сравниваем с временем активации точки
     referenceTime = new Date(ctx.team.pointActivationTime);
   } else {
-    // Для последующих - с временем последнего ответа
-    // Если по какой-то причине его нет, используем время активации
     referenceTime = new Date(ctx.team.lastAnswerTime || ctx.team.pointActivationTime);
   }
   
@@ -47,8 +45,7 @@ async function checkTimePenalty(ctx, questionIndex) {
   const timeDiff = (now - referenceTime) / 1000;
   
   if (timeDiff < PENALTIES.MIN_TIME_BETWEEN_ANSWERS) {
-    services.team.addPoints(ctx.chat.id, -PENALTIES.TOO_FAST_ANSWER);
-    await ctx.reply(getRandomTooFastMessage(), { parse_mode: "Markdown" });
+    // НЕ применяем штраф здесь, только возвращаем флаг
     return true;
   }
   return false;
@@ -229,7 +226,10 @@ async function handleTextQuestionAnswer(ctx) {
     return ctx.reply(locales.questionNotFound);
   }
 
-  // Проверяем временной интервал и применяем штраф если нужно
+  const key = `${ctx.team.currentPoint}_${ctx.team.currentQuestion}`;
+  const currentPoints = ctx.team.questionPoints?.[key] || PENALTIES.BASE_QUESTION_POINTS;
+
+  // Только проверка, без применения штрафа
   const hasPenalty = await checkTimePenalty(ctx, ctx.team.currentQuestion);
 
   const isCorrect = services.team.verifyAnswer(
@@ -238,20 +238,36 @@ async function handleTextQuestionAnswer(ctx) {
     ctx.message.text
   );
 
-  // Обновляем время ответа
   services.team.updateLastAnswerTime(ctx.chat.id, new Date().toISOString());
 
   if (isCorrect) {
-    const key = `${ctx.team.currentPoint}_${ctx.team.currentQuestion}`;
-    const currentPoints = ctx.team.questionPoints?.[key] || 10;
+    services.team.addPoints(ctx.chat.id, currentPoints);
+    
+    let actualPoints = currentPoints;
+    let penaltyMessage = "";
 
-    // Если был штраф, начисляем меньше баллов
-    const finalPoints = hasPenalty ? Math.max(1, currentPoints - PENALTIES.TOO_FAST_ANSWER) : currentPoints;
+    // Применяем временной штраф ПОСЛЕ начисления
+    if (hasPenalty) {
+      services.team.addPoints(ctx.chat.id, -PENALTIES.TOO_FAST_ANSWER);
+      actualPoints = currentPoints - PENALTIES.TOO_FAST_ANSWER;
+      penaltyMessage = ` (${currentPoints}-${PENALTIES.TOO_FAST_ANSWER} за скорость)`;
+      await ctx.reply(getRandomTooFastMessage(), { parse_mode: "Markdown" });
+    }
 
-    services.team.addPoints(ctx.chat.id, finalPoints);
-    await ctx.reply(locales.correctAnswer.replace("%d", finalPoints));
+    // Показываем сообщение с ФАКТИЧЕСКИМИ баллами
+    await ctx.reply(locales.correctAnswer.replace("%d", actualPoints) + penaltyMessage);
 
-    // Переход к следующему вопросу или завершение точки
+    // Адаптивная стоимость следующего вопроса
+    const nextKey = `${ctx.team.currentPoint}_${ctx.team.currentQuestion + 1}`;
+    if (hasPenalty && ctx.team.currentQuestion < point.questions.length - 1) {
+      services.team.updateQuestionPoints(
+        ctx.chat.id,
+        ctx.team.currentPoint,
+        ctx.team.currentQuestion + 1,
+        -3
+      );
+    }
+
     if (ctx.team.currentQuestion < point.questions.length - 1) {
       services.team.updateTeam(ctx.chat.id, {
         currentQuestion: ctx.team.currentQuestion + 1,
@@ -273,12 +289,20 @@ async function handleTextQuestionAnswer(ctx) {
       );
     }
   } else {
-    // Штраф за неправильный ответ
     services.team.addPoints(ctx.chat.id, -PENALTIES.WRONG_ANSWER);
     await ctx.reply(
       getRandomWrongAnswerMessage(),
       { parse_mode: "Markdown" }
     );
+    
+    // Адаптивная стоимость при ошибке
+    services.team.updateQuestionPoints(
+      ctx.chat.id,
+      ctx.team.currentPoint,
+      ctx.team.currentQuestion,
+      -2
+    );
+    
     await askQuestion(ctx, ctx.team.currentQuestion);
   }
 }
@@ -732,9 +756,16 @@ async function handleQuestionAnswer(ctx) {
   const question = point.questions[questionIndex];
 
   const key = `${ctx.team.currentPoint}_${questionIndex}`;
-  const currentPoints = ctx.team.questionPoints?.[key] || 10;
+  
+  // Инициализируем questionPoints если не существует
+  if (!ctx.team.questionPoints) {
+    services.team.updateTeam(ctx.chat.id, { questionPoints: {} });
+  }
+  
+  // Устанавливаем базовое значение, если не установлено
+  const currentPoints = ctx.team.questionPoints[key] || PENALTIES.BASE_QUESTION_POINTS;
 
-  // Проверяем временной интервал и применяем штраф если нужно
+  // Проверяем временной интервал (только флаг, без штрафа)
   const hasPenalty = await checkTimePenalty(ctx, questionIndex);
 
   const isCorrect = services.team.verifyAnswer(
@@ -747,11 +778,33 @@ async function handleQuestionAnswer(ctx) {
   services.team.updateLastAnswerTime(ctx.chat.id, new Date().toISOString());
 
   if (isCorrect) {
-    // Если был штраф, начисляем меньше баллов
-    const finalPoints = hasPenalty ? Math.max(1, currentPoints - PENALTIES.TOO_FAST_ANSWER) : currentPoints;
+    // Сначала начисляем баллы
+    services.team.addPoints(ctx.chat.id, currentPoints);
+    
+    let actualPoints = currentPoints; // Фактические баллы после всех операций
+    let penaltyMessage = "";
 
-    services.team.addPoints(ctx.chat.id, finalPoints);
-    await ctx.reply(locales.correctAnswer.replace("%d", finalPoints));
+    // Применяем временной штраф ПОСЛЕ начисления
+    if (hasPenalty) {
+      services.team.addPoints(ctx.chat.id, -PENALTIES.TOO_FAST_ANSWER);
+      actualPoints = currentPoints - PENALTIES.TOO_FAST_ANSWER;
+      penaltyMessage = ` (${currentPoints}-${PENALTIES.TOO_FAST_ANSWER} за скорость)`;
+      await ctx.reply(getRandomTooFastMessage(), { parse_mode: "Markdown" });
+    }
+
+    // Показываем сообщение с ФАКТИЧЕСКИМИ баллами
+    await ctx.reply(locales.correctAnswer.replace("%d", actualPoints) + penaltyMessage);
+
+    // Уменьшаем стоимость следующего вопроса при быстром ответе
+    const nextKey = `${ctx.team.currentPoint}_${questionIndex + 1}`;
+    if (hasPenalty && questionIndex < point.questions.length - 1) {
+      services.team.updateQuestionPoints(
+        ctx.chat.id,
+        ctx.team.currentPoint,
+        questionIndex + 1,
+        -3 // Уменьшаем стоимость следующего вопроса
+      );
+    }
 
     if (questionIndex < point.questions.length - 1) {
       services.team.updateTeam(ctx.chat.id, {
@@ -774,12 +827,21 @@ async function handleQuestionAnswer(ctx) {
       );
     }
   } else {
-    // Штраф за неправильный ответ
+    // Штраф за неправильный ответ (без временного штрафа)
     services.team.addPoints(ctx.chat.id, -PENALTIES.WRONG_ANSWER);
     await ctx.reply(
       getRandomWrongAnswerMessage(),
       { parse_mode: "Markdown" }
     );
+    
+    // Увеличиваем стоимость этого вопроса при следующей попытке
+    services.team.updateQuestionPoints(
+      ctx.chat.id,
+      ctx.team.currentPoint,
+      questionIndex,
+      -2 // Уменьшаем, но делаем отрицательным для логики
+    );
+    
     await askQuestion(ctx, questionIndex);
   }
 }
