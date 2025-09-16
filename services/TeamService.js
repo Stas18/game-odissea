@@ -6,13 +6,12 @@ const questions = require("../data/questions.json");
 class TeamService {
   constructor() {
     this.teams = this.loadTeams();
-    // Инициализируем questionPoints для каждой команды
     this.teams.forEach(team => {
-      if (!team.questionPoints) {
-        team.questionPoints = {};
+      if (!team.prizesReceived) {
+        team.prizesReceived = [];
       }
     });
-    this.saveTeams(); // Сохраняем изменения
+    this.saveTeams();
   }
 
   verifyCode(pointId, userInput) {
@@ -199,8 +198,9 @@ class TeamService {
       if (!team.questionPoints) team.questionPoints = {};
       const key = `${pointId}_${questionIndex}`;
 
-      // Гарантируем минимальное значение 1 балл
-      const newPoints = Math.max(1, (team.questionPoints[key] || PENALTIES.BASE_QUESTION_POINTS) + pointsDelta);
+      // Используем константу вместо PENALTIES
+      const BASE_POINTS = 10;
+      const newPoints = Math.max(1, (team.questionPoints[key] || BASE_POINTS) + pointsDelta);
       team.questionPoints[key] = newPoints;
 
       this.saveTeams();
@@ -215,6 +215,26 @@ class TeamService {
       return true;
     }
     return false;
+  }
+
+  addPrize(chatId, prizeThreshold) {
+    const team = this.getTeam(chatId);
+    if (team && !team.prizesReceived.includes(prizeThreshold)) {
+      team.prizesReceived.push(prizeThreshold);
+      this.saveTeams();
+      return true;
+    }
+    return false;
+  }
+
+  hasPrize(chatId, prizeThreshold = null) {
+    const team = this.getTeam(chatId);
+    if (!team || !team.prizesReceived) return false;
+
+    if (prizeThreshold) {
+      return team.prizesReceived.includes(prizeThreshold);
+    }
+    return team.prizesReceived.length > 0;
   }
 }
 

@@ -8,17 +8,73 @@
       "Брюс Уэйн",
       "Питер Паркер"
     ],
-    "points": 0,
-    "completedPoints": [],
+    "points": 103,
+    "completedPoints": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
     "completedMiniQuests": [],
     "currentPoint": null,
     "currentMiniQuest": null,
     "currentQuestion": 0,
     "totalQuestions": 0,
-    "startTime": "2025-09-12T04:35:56.435Z",
+    "startTime": "2025-09-16T08:28:48.830Z",
     "waitingForMembers": false,
     "waitingForBroadcast": false,
-    "lastAnswerTime": null,
-    "questionPoints": {}
+    "lastAnswerTime": "2025-09-16T08:35:50.668Z",
+    "questionPoints": {
+      "1_0": 4,
+      "2_0": 8,
+      "4_0": 8
+    },
+    "pointActivationTime": "2025-09-16T08:35:46.599Z",
+    "prizesReceived": [
+      8
+    ]
+  },
+  {
+    "chatId": 7644957461,
+    "teamName": "Безумцы с попкорном",
+    "captainId": 7644957461,
+    "members": [],
+    "points": 120,
+    "completedPoints": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "completedMiniQuests": [],
+    "currentPoint": null,
+    "currentMiniQuest": null,
+    "currentQuestion": 0,
+    "totalQuestions": 0,
+    "startTime": "2025-09-16T08:29:11.395Z",
+    "waitingForMembers": false,
+    "waitingForBroadcast": false,
+    "lastAnswerTime": "2025-09-16T08:39:59.864Z",
+    "questionPoints": {},
+    "prizesReceived": [
+      10
+    ],
+    "pointActivationTime": "2025-09-16T08:39:55.867Z"
   }
 ]
