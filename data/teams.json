@@ -1,1 +1,42 @@
-[]
+[
+  {
+    "chatId": 7644957461,
+    "teamName": "Безумцы с попкорном",
+    "captainId": 7644957461,
+    "members": [
+      "Питер Паркер"
+    ],
+    "points": 0,
+    "completedPoints": [],
+    "completedMiniQuests": [],
+    "currentPoint": null,
+    "currentMiniQuest": null,
+    "currentQuestion": 0,
+    "totalQuestions": 0,
+    "startTime": "2025-09-17T11:05:56.672Z",
+    "waitingForMembers": false,
+    "waitingForBroadcast": false,
+    "lastAnswerTime": null,
+    "questionPoints": {}
+  },
+  {
+    "chatId": 1147849296,
+    "teamName": "Хабенские",
+    "captainId": 1147849296,
+    "members": [
+      "Стас"
+    ],
+    "points": 0,
+    "completedPoints": [],
+    "completedMiniQuests": [],
+    "currentPoint": null,
+    "currentMiniQuest": null,
+    "currentQuestion": 0,
+    "totalQuestions": 0,
+    "startTime": "2025-09-17T11:06:14.830Z",
+    "waitingForMembers": false,
+    "waitingForBroadcast": false,
+    "lastAnswerTime": null,
+    "questionPoints": {}
+  }
+]

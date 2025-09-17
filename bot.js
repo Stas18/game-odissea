@@ -94,13 +94,13 @@ bot.use(async (ctx, next) => {
   if (services.team.isTeamRegistered(ctx.chat.id)) {
     ctx.team = services.team.getTeam(ctx.chat.id);
 
-    // Разрешаем доступ к меню если игра активна
-    if (services.admin.isGameActive) {
+    // Разрешаем доступ к меню если игра активна ИЛИ команда ожидает ввода участников
+    if (services.admin.isGameActive || ctx.team.waitingForMembers) {
       return next();
     }
   }
 
-  const exemptRoutes = ["/start", "team_", "/admin", "top_", "reset_"];
+  const exemptRoutes = ["/start", "team_", "/admin", "top_", "reset_", "ℹ️ Информация", "📊 Прогресс", "🏆 Топ команд"];
   const isExempt = exemptRoutes.some(
     (route) =>
       ctx.message?.text?.startsWith(route) ||
@@ -156,14 +156,20 @@ bot.hears(locales.gameStartButton, async (ctx) => {
   await ctx.reply(result.adminMessage);
   await handleAdminPanel(ctx);
 
-  // Рассылаем уведомление всем командам
+  // Рассылаем уведомление всем командам с обновленным меню
   const teams = services.team.getAllTeams();
   for (const team of teams) {
     try {
+      const isTeamRegistered = services.team.isTeamRegistered(team.chatId);
+      
       await bot.telegram.sendMessage(
         team.chatId,
         result.broadcastMessage,
-        keyboards.mainMenu.getKeyboard(false, true) // isAdmin=false, isGameActive=true
+        keyboards.mainMenu.getKeyboard(
+          services.admin.isAdmin(team.chatId),
+          true, // isGameActive = true
+          isTeamRegistered
+        )
       );
     } catch (err) {
       console.error(`Ошибка отправки команде ${team.chatId}:`, err);
@@ -178,26 +184,25 @@ bot.hears(locales.gameStopButton, async (ctx) => {
   await ctx.reply(result.adminMessage);
   await handleAdminPanel(ctx);
 
-  // Рассылаем уведомление всем командам
+  // Рассылаем уведомление всем командам с обновленным меню
   const teams = services.team.getAllTeams();
   for (const team of teams) {
     try {
+      const isTeamRegistered = services.team.isTeamRegistered(team.chatId);
+      
       await bot.telegram.sendMessage(
         team.chatId,
         result.broadcastMessage,
-        Markup.removeKeyboard()
+        keyboards.mainMenu.getKeyboard(
+          services.admin.isAdmin(team.chatId),
+          false, // isGameActive = false
+          isTeamRegistered
+        )
       );
     } catch (err) {
       console.error(`Ошибка отправки команде ${team.chatId}:`, err);
     }
   }
-});
-
-bot.use(async (ctx, next) => {
-  if (services.team.isTeamRegistered(ctx.chat.id)) {
-    ctx.team = services.team.getTeam(ctx.chat.id);
-  }
-  await next();
 });
 
 // ======================
@@ -402,25 +407,20 @@ async function handleStart(ctx) {
   if (services.team.isTeamRegistered(ctx.chat.id)) {
     const team = services.team.getTeam(ctx.chat.id);
     const isGameActive = services.admin.isGameActive;
+    const isTeamRegistered = services.team.isTeamRegistered(ctx.chat.id);
 
     if (team.waitingForMembers) {
       return ctx.reply(locales.addMembers, Markup.removeKeyboard());
     }
 
-    if (!isGameActive && !services.admin.isAdmin(ctx.from.id)) {
-      return ctx.reply(
-        locales.alreadyRegistered + "\n\n" + locales.gameNotStarted,
-        Markup.keyboard([
-          ["🏆 Топ команд", "ℹ️ Информация"], // Обновленные кнопки
-        ]).resize()
-      );
-    }
-
+    // Всегда показываем кнопки для зарегистрированных команд с учетом статуса игры
     return ctx.reply(
       locales.alreadyRegistered,
       keyboards.mainMenu.getKeyboard(
         services.admin.isAdmin(ctx.from.id),
-        isGameActive
+        isGameActive,
+        isTeamRegistered,
+        team.waitingForMembers
       )
     );
   }
@@ -569,7 +569,9 @@ async function handleTeamSelection(ctx) {
     locales.addMembers,
     keyboards.mainMenu.getKeyboard(
       services.admin.isAdmin(ctx.from.id),
-      services.admin.isGameActive
+      services.admin.isGameActive,
+      true, // isTeamRegistered = true
+      true  // waitingForMembers = true
     )
   );
 }
@@ -900,7 +902,7 @@ async function handleBroadcast(ctx) {
 
 async function handleBroadcastMessage(ctx) {
   if (!ctx.team?.waitingForBroadcast) return;
-  
+
   const teams = services.team.getAllTeams();
   const successCount = await services.admin.broadcastMessage(
     bot,
@@ -961,11 +963,15 @@ async function handleMembersInput(ctx) {
     waitingForMembers: false,
   });
 
+  const isTeamRegistered = services.team.isTeamRegistered(ctx.chat.id);
+
   await ctx.reply(
     locales.membersAdded.replace("%s", members.join(", ")),
-    keyboards.mainMenu.getKeyboard( // Изменено здесь
+    keyboards.mainMenu.getKeyboard(
       services.admin.isAdmin(ctx.from.id),
-      services.admin.isGameActive
+      services.admin.isGameActive,
+      isTeamRegistered,
+      false  // waitingForMembers = false
     )
   );
 }

@@ -49,29 +49,29 @@ class AdminService {
     return this.admins.includes(Number(userId));
   }
 
-async broadcastMessage(bot, message, teams) {
-  let successCount = 0;
-  const adminIds = this.admins; // Получаем список ID админов
-  
-  for (const team of teams) {
-    try {
-      // Пропускаем админов, чтобы не отправлять сообщение самим себе
-      if (adminIds.includes(Number(team.chatId))) {
-        continue;
+  async broadcastMessage(bot, message, teams) {
+    let successCount = 0;
+    const adminIds = this.admins; // Получаем список ID админов
+
+    for (const team of teams) {
+      try {
+        // Пропускаем админов, чтобы не отправлять сообщение самим себе
+        if (adminIds.includes(Number(team.chatId))) {
+          continue;
+        }
+
+        await bot.telegram.sendMessage(
+          team.chatId,
+          locales.broadcastMessage.replace("%s", message),
+          { parse_mode: 'Markdown' }
+        );
+        successCount++;
+      } catch (err) {
+        console.error(`${locales.broadcastError.replace('%s', team.teamName)}:`, err);
       }
-      
-      await bot.telegram.sendMessage(
-        team.chatId,
-        locales.broadcastMessage.replace("%s", message),
-        { parse_mode: 'Markdown' }
-      );
-      successCount++;
-    } catch (err) {
-      console.error(`${locales.broadcastError.replace('%s', team.teamName)}:`, err);
     }
+    return successCount;
   }
-  return successCount;
-}
 
   resetAllTeams(teamService) {
     const teamsWithProgress = teamService.teams.filter(
