@@ -35,10 +35,7 @@ const PENALTIES = {
   MIN_TIME_BETWEEN_ANSWERS: 70 // Минимальное время между ответами (71 сек)
 };
 
-async function checkTimePenalty(ctx, questionIndex, isFirstQuestion = false) {
-  // Не штрафуем за первый вопрос после активации точки
-  if (isFirstQuestion) return { hasPenalty: false, timeDiff: 0 };
-
+async function checkTimePenalty(ctx, questionIndex) {
   let referenceTime;
 
   if (questionIndex === 0) {
@@ -52,7 +49,7 @@ async function checkTimePenalty(ctx, questionIndex, isFirstQuestion = false) {
   const now = new Date();
   const timeDiff = (now - referenceTime) / 1000; // Разница в секундах
 
-  // Штрафуем если ответили слишком быстро (менее 70 секунд)
+  // Штрафуем если ответили слишком быстро
   return {
     hasPenalty: timeDiff < PENALTIES.MIN_TIME_BETWEEN_ANSWERS,
     timeDiff: timeDiff
@@ -251,13 +248,11 @@ bot.on("text", async (ctx) => {
     const questions = require("./data/questions.json");
     const point = questions.find((p) => p.pointId === ctx.team.currentPoint);
 
-    // Добавить проверку существования вопроса
     if (point && point.questions[ctx.team.currentQuestion]) {
       const question = point.questions[ctx.team.currentQuestion];
 
       if (!Array.isArray(question.options)) {
-        const isFirstQuestion = (ctx.team.currentQuestion === 0);
-        const hasPenalty = await checkTimePenalty(ctx, ctx.team.currentQuestion, isFirstQuestion);
+        const hasPenalty = await checkTimePenalty(ctx, ctx.team.currentQuestion);
         const isCorrect = services.team.verifyAnswer(
           ctx.team.currentPoint,
           ctx.team.currentQuestion,
@@ -265,7 +260,6 @@ bot.on("text", async (ctx) => {
         );
 
         await processQuestionAnswer(ctx, isCorrect, {
-          isFirstQuestion,
           questionIndex: ctx.team.currentQuestion,
           point,
           hasPenalty
@@ -683,11 +677,12 @@ async function handlePointCode(ctx) {
     const questions = require("./data/questions.json");
     const point = questions.find((p) => p.pointId === team.currentPoint);
 
+    // Устанавливаем время активации точки для отсчета времени первого вопроса
     services.team.updateTeam(ctx.chat.id, {
       currentQuestion: 0,
       totalQuestions: point.questions.length,
       lastAnswerTime: new Date().toISOString(),
-      pointActivationTime: new Date().toISOString() // Устанавливаем время активации
+      pointActivationTime: new Date().toISOString() // Важно: фиксируем время активации для первого вопроса
     });
     await askQuestion(ctx, 0);
   } else {
@@ -748,8 +743,7 @@ async function handleQuestionAnswer(ctx) {
   const questions = require("./data/questions.json");
   const point = questions.find((p) => p.pointId === ctx.team.currentPoint);
 
-  const isFirstQuestion = (questionIndex === 0);
-  const hasPenalty = await checkTimePenalty(ctx, questionIndex, isFirstQuestion);
+  const hasPenalty = await checkTimePenalty(ctx, questionIndex);
   const isCorrect = services.team.verifyAnswer(
     ctx.team.currentPoint,
     questionIndex,
@@ -757,7 +751,6 @@ async function handleQuestionAnswer(ctx) {
   );
 
   await processQuestionAnswer(ctx, isCorrect, {
-    isFirstQuestion,
     questionIndex,
     point,
     hasPenalty
@@ -1015,28 +1008,38 @@ async function handleMembersInput(ctx) {
 }
 
 async function processQuestionAnswer(ctx, isCorrect, options) {
-  const { isFirstQuestion, questionIndex, point, hasPenalty } = options;
+  const { questionIndex, point } = options;
 
   const key = `${ctx.team.currentPoint}_${questionIndex}`;
   const currentPoints = ctx.team.questionPoints?.[key] || PENALTIES.BASE_QUESTION_POINTS;
 
+  // Проверяем время для ВСЕХ вопросов (включая первый)
+  const hasPenalty = await checkTimePenalty(ctx, questionIndex);
   services.team.updateLastAnswerTime(ctx.chat.id, new Date().toISOString());
 
   if (isCorrect) {
     let pointsToAdd = currentPoints;
     let penaltyMessage = "";
 
-    // Применяем штраф за скорость (только если не первый вопрос)
-    if (hasPenalty && !isFirstQuestion) {
+    // Применяем штраф за скорость для ЛЮБОГО вопроса
+    if (hasPenalty.hasPenalty) {
       const penalty = PENALTIES.TOO_FAST_ANSWER;
       pointsToAdd = Math.max(1, currentPoints - penalty); // Минимум 1 балл
       penaltyMessage = ` (${currentPoints}-${penalty} за скорость)`;
 
       // Отправляем сообщение о штрафе
       await ctx.reply(getRandomTooFastMessage(), { parse_mode: "Markdown" });
+      
+      // ОБНОВЛЯЕМ стоимость вопроса после штрафа
+      services.team.updateQuestionPoints(
+        ctx.chat.id,
+        ctx.team.currentPoint,
+        questionIndex,
+        -penalty
+      );
     }
 
-    // Начисляем баллы
+    // Начисляем баллы (уже с учетом штрафа)
     services.team.addPoints(ctx.chat.id, pointsToAdd);
 
     // Сообщение о правильном ответе

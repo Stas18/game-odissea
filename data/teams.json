@@ -1,25 +1,34 @@
 [
   {
-    "chatId": 1147849296,
-    "teamName": "Безумцы с попкорном",
-    "captainId": 1147849296,
+    "chatId": 7644957461,
+    "teamName": "Хабенские",
+    "captainId": 7644957461,
     "members": [
-      "-"
+      "Тони Старк",
+      "Брюс Уэйн",
+      "Питер Паркер"
     ],
-    "points": 0,
-    "completedPoints": [],
+    "points": 15,
+    "completedPoints": [
+      1,
+      2,
+      3
+    ],
     "completedMiniQuests": [],
-    "currentPoint": 2,
+    "currentPoint": null,
     "currentMiniQuest": null,
     "currentQuestion": 0,
     "totalQuestions": 0,
-    "startTime": "2025-09-17T11:44:47.482Z",
+    "startTime": "2025-09-17T14:06:17.440Z",
     "completionTime": null,
     "waitingForMembers": false,
     "waitingForBroadcast": false,
-    "lastAnswerTime": null,
-    "questionPoints": {},
-    "pointActivationTime": "2025-09-17T11:59:04.656Z",
-    "prizesReceived": []
+    "lastAnswerTime": "2025-09-17T14:07:15.996Z",
+    "questionPoints": {
+      "1_0": 7,
+      "2_0": 7,
+      "3_0": 5
+    },
+    "pointActivationTime": "2025-09-17T14:07:07.486Z"
   }
 ]
