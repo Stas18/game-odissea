@@ -118,8 +118,14 @@ class AdminService {
           locales.questCompleted :
           `${locales.pointsProgress.replace('%d', team.completedPoints.length).replace('%d', totalPoints)}`;
 
+        let completionInfo = '';
+        if (team.completionTime) {
+          const completionDate = new Date(team.completionTime);
+          completionInfo = ` | 🏁 Завершил: ${completionDate.toLocaleTimeString()}`;
+        }
+
         return `*${index + 1}. ${team.teamName}* - ${team.points} ${locales.points}\n` +
-          `   ${progress} | ⏱ ${timeInGame}`;
+          `   ${progress} | ⏱ ${timeInGame}${completionInfo}`;
       })
       .join('\n\n');
 
@@ -141,6 +147,12 @@ class AdminService {
   async getFullStats(teams) {
     const stats = teams.map(team => {
       const timeInGame = this.formatGameTime(team.startTime);
+      let completionInfo = '';
+      if (team.completionTime) {
+        const completionDate = new Date(team.completionTime);
+        completionInfo = `\n🏁 Завершил: ${completionDate.toLocaleString()}`;
+      }
+
       return `*${team.teamName}* (ID: ${team.chatId}):\n` +
         `${locales.captain}: ${team.captainId}\n` +
         `${locales.members}: ${team.members.join(', ') || locales.none}\n` +
@@ -148,7 +160,8 @@ class AdminService {
         `${locales.completedPoints}: ${team.completedPoints.join(', ') || locales.none}\n` +
         `${locales.completedMiniQuests}: ${team.completedMiniQuests.length}\n` +
         `${locales.timeInGame}: ${timeInGame}\n` +
-        `${locales.startTime}: ${new Date(team.startTime).toLocaleString()}`;
+        `${locales.startTime}: ${new Date(team.startTime).toLocaleString()}` +
+        completionInfo;
     }).join('\n\n────────────────\n');
 
     return `${locales.fullStatsHeader.replace('%d', teams.length)}\n\n${stats || locales.noData}`;

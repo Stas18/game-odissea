@@ -161,7 +161,7 @@ bot.hears(locales.gameStartButton, async (ctx) => {
   for (const team of teams) {
     try {
       const isTeamRegistered = services.team.isTeamRegistered(team.chatId);
-      
+
       await bot.telegram.sendMessage(
         team.chatId,
         result.broadcastMessage,
@@ -189,7 +189,7 @@ bot.hears(locales.gameStopButton, async (ctx) => {
   for (const team of teams) {
     try {
       const isTeamRegistered = services.team.isTeamRegistered(team.chatId);
-      
+
       await bot.telegram.sendMessage(
         team.chatId,
         result.broadcastMessage,
@@ -819,7 +819,7 @@ async function handleMiniQuestAnswer(ctx) {
         services.team.addPoints(ctx.chat.id, 5);
         await ctx.reply(
           locales.miniQuestCorrect.replace("%d", team.points + 5),
-          { 
+          {
             parse_mode: "Markdown",
             ...keyboards.mainMenu.getKeyboard(
               services.admin.isAdmin(ctx.from.id),
@@ -854,6 +854,12 @@ async function handleProgress(ctx) {
   const progress = services.team.getTeamProgress(ctx.chat.id);
   if (!progress) return;
 
+  let completionInfo = '';
+  if (progress.completionTime) {
+    const completionDate = new Date(progress.completionTime);
+    completionInfo = `\n🏁 *Завершил:* ${completionDate.toLocaleString()}`;
+  }
+
   const message = [
     `🏆 *Команда:* ${progress.teamName}`,
     `👤 *Капитан:* ${ctx.from.first_name} ${ctx.from.last_name || ""}`,
@@ -863,6 +869,7 @@ async function handleProgress(ctx) {
     `🎲 *Пройдено мини-квестов:* ${progress.completedMiniQuests.length}/${progress.totalMiniQuests}`,
     `⏱ *В игре:* ${progress.timeInGame}`,
     `🕒 *Старт:* ${new Date(progress.startTime).toLocaleString()}`,
+    completionInfo
   ].join("\n");
 
   await ctx.reply(message, { parse_mode: "Markdown" });
@@ -919,7 +926,7 @@ async function handleBroadcastMessage(ctx) {
   if (!ctx.team?.waitingForBroadcast) return;
 
   const teams = services.team.getAllTeams();
-  
+
   // Проверяем, есть ли команды для рассылки
   if (teams.length === 0) {
     await ctx.reply("❌ Нет зарегистрированных команд для рассылки");
@@ -1068,6 +1075,8 @@ async function processQuestionAnswer(ctx, isCorrect, options) {
       const totalPoints = [...new Set(questions.map(q => q.pointId))].length;
 
       if (updatedTeam.completedPoints.length >= totalPoints) {
+        // Фиксируем время завершения
+        services.team.setCompletionTime(ctx.chat.id);
         await showCompletionTime(ctx, updatedTeam);
       }
 
@@ -1079,7 +1088,7 @@ async function processQuestionAnswer(ctx, isCorrect, options) {
     services.team.addPoints(ctx.chat.id, -PENALTIES.WRONG_ANSWER);
     await ctx.reply(
       getRandomWrongAnswerMessage(),
-      { 
+      {
         parse_mode: "Markdown",
         ...keyboards.mainMenu.getKeyboard(
           services.admin.isAdmin(ctx.from.id),

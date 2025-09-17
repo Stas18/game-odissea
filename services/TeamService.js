@@ -68,6 +68,7 @@ class TeamService {
       currentQuestion: 0,
       totalQuestions: 0,
       startTime: new Date().toISOString(),
+      completionTime: null,
       waitingForMembers: false,
       waitingForBroadcast: false,
       lastAnswerTime: null,
@@ -149,6 +150,16 @@ class TeamService {
       : `${mins}${locales.minutes}`;
   }
 
+  setCompletionTime(chatId) {
+    const team = this.getTeam(chatId);
+    if (team) {
+      team.completionTime = new Date().toISOString();
+      this.saveTeams();
+      return true;
+    }
+    return false;
+  }
+
   getTeamProgress(chatId) {
     const team = this.getTeam(chatId);
     if (!team) return null;
@@ -166,6 +177,7 @@ class TeamService {
       completedMiniQuests: team.completedMiniQuests,
       totalMiniQuests: miniQuests.length,
       startTime: team.startTime,
+      completionTime: team.completionTime,
       timeInGame: this.getGameTime(chatId),
     };
   }
