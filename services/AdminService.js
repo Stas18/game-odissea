@@ -55,7 +55,7 @@ class AdminService {
       try {
         await bot.telegram.sendMessage(
           team.chatId,
-          `📢 ${locales.broadcastMessage.replace('%s', message)}`,
+          locales.broadcastMessage.replace("%s", message),
           { parse_mode: 'Markdown' }
         );
         successCount++;

@@ -35,11 +35,6 @@ const PENALTIES = {
   MIN_TIME_BETWEEN_ANSWERS: 70 // Минимальное время между ответами (71 сек)
 };
 
-const ERROR_MESSAGES = {
-  PHOTO_NOT_FOUND: "Фото недоступно",
-  DEFAULT_ERROR: "Произошла ошибка"
-};
-
 async function checkTimePenalty(ctx, questionIndex, isFirstQuestion = false) {
   // Не штрафуем за первый вопрос после активации точки
   if (isFirstQuestion) return { hasPenalty: false, timeDiff: 0 };
@@ -250,115 +245,43 @@ bot.on("text", async (ctx) => {
   if (ctx.team?.currentPoint !== null && ctx.team?.currentPoint !== undefined) {
     const questions = require("./data/questions.json");
     const point = questions.find((p) => p.pointId === ctx.team.currentPoint);
-    const question = point.questions[ctx.team.currentQuestion];
 
-    // Если это текстовый вопрос (не карточки)
-    if (!Array.isArray(question.options)) {
-      return handleTextQuestionAnswer(ctx);
+    // Добавить проверку существования вопроса
+    if (point && point.questions[ctx.team.currentQuestion]) {
+      const question = point.questions[ctx.team.currentQuestion];
+
+      if (!Array.isArray(question.options)) {
+        const isFirstQuestion = (ctx.team.currentQuestion === 0);
+        const hasPenalty = await checkTimePenalty(ctx, ctx.team.currentQuestion, isFirstQuestion);
+        const isCorrect = services.team.verifyAnswer(
+          ctx.team.currentPoint,
+          ctx.team.currentQuestion,
+          ctx.message.text
+        );
+
+        await processQuestionAnswer(ctx, isCorrect, {
+          isFirstQuestion,
+          questionIndex: ctx.team.currentQuestion,
+          point,
+          hasPenalty
+        });
+        return;
+      }
     }
   }
-
-
-  return ctx.reply(locales.useMenuButtons);
 });
 
-async function handleTextQuestionAnswer(ctx) {
-  const questions = require("./data/questions.json");
-  const point = questions.find((p) => p.pointId === ctx.team.currentPoint);
+async function showCompletionTime(ctx, team) {
+  const startTime = new Date(team.startTime);
+  const endTime = new Date();
+  const duration = endTime - startTime;
+  const hours = Math.floor(duration / 3600000);
+  const minutes = Math.floor((duration % 3600000) / 60000);
 
-  if (!point || !point.questions[ctx.team.currentQuestion]) {
-    return ctx.reply(locales.questionNotFound);
-  }
-
-  const key = `${ctx.team.currentPoint}_${ctx.team.currentQuestion}`;
-  const currentPoints = ctx.team.questionPoints?.[key] || PENALTIES.BASE_QUESTION_POINTS;
-
-  // Проверяем временной интервал (только флаг, без штрафа)
-  // Первый вопрос (currentQuestion === 0) не штрафуется за скорость
-  const isFirstQuestion = (ctx.team.currentQuestion === 0);
-  const hasPenalty = await checkTimePenalty(ctx, ctx.team.currentQuestion, isFirstQuestion);
-
-  const isCorrect = services.team.verifyAnswer(
-    ctx.team.currentPoint,
-    ctx.team.currentQuestion,
-    ctx.message.text
+  await ctx.reply(
+    `🎉 *Квест завершен!*\n⏱ Ваше время: ${hours}ч ${minutes}м`,
+    { parse_mode: 'Markdown' }
   );
-
-  services.team.updateLastAnswerTime(ctx.chat.id, new Date().toISOString());
-
-  if (isCorrect) {
-    services.team.addPoints(ctx.chat.id, currentPoints);
-
-    let actualPoints = currentPoints;
-    let penaltyMessage = "";
-
-    // Применяем временной штраф ПОСЛЕ начисления (только если не первый вопрос)
-    if (hasPenalty && !isFirstQuestion) {
-      services.team.addPoints(ctx.chat.id, -PENALTIES.TOO_FAST_ANSWER);
-      actualPoints = currentPoints - PENALTIES.TOO_FAST_ANSWER;
-      penaltyMessage = ` (${currentPoints}-${PENALTIES.TOO_FAST_ANSWER} за скорость)`;
-      await ctx.reply(getRandomTooFastMessage(), { parse_mode: "Markdown" });
-    }
-
-    // Показываем сообщение с ФАКТИЧЕСКИМИ баллами
-    await ctx.reply(locales.correctAnswer.replace("%d", actualPoints) + penaltyMessage);
-
-    // Адаптивная стоимость следующего вопроса (только если не первый вопрос)
-    const nextKey = `${ctx.team.currentPoint}_${ctx.team.currentQuestion + 1}`;
-    if (hasPenalty && !isFirstQuestion && ctx.team.currentQuestion < point.questions.length - 1) {
-      services.team.updateQuestionPoints(
-        ctx.chat.id,
-        ctx.team.currentPoint,
-        ctx.team.currentQuestion + 1,
-        -3
-      );
-    }
-
-    if (ctx.team.currentQuestion < point.questions.length - 1) {
-      services.team.updateTeam(ctx.chat.id, {
-        currentQuestion: ctx.team.currentQuestion + 1,
-      });
-      await askQuestion(ctx, ctx.team.currentQuestion + 1);
-    } else {
-      const completedPointId = services.team.completePoint(
-        ctx.chat.id,
-        ctx.team.currentPoint
-      );
-
-      // Получаем обновленную команду
-      const updatedTeam = services.team.getTeam(ctx.chat.id);
-      const completedPointsCount = updatedTeam.completedPoints.length;
-
-      await ctx.reply(
-        locales.pointCompleted
-          .replace("%d", completedPointId)
-          .replace("%d", updatedTeam.points),
-        keyboards.mainMenu.getKeyboard(
-          services.admin.isAdmin(ctx.from.id),
-          services.admin.isGameActive
-        )
-      );
-
-      // Проверяем и награждаем призами
-      await checkAndAwardPrizes(ctx, ctx.chat.id, completedPointsCount);
-    }
-  } else {
-    services.team.addPoints(ctx.chat.id, -PENALTIES.WRONG_ANSWER);
-    await ctx.reply(
-      getRandomWrongAnswerMessage(),
-      { parse_mode: "Markdown" }
-    );
-
-    // Адаптивная стоимость при ошибке
-    services.team.updateQuestionPoints(
-      ctx.chat.id,
-      ctx.team.currentPoint,
-      ctx.team.currentQuestion,
-      -2
-    );
-
-    await askQuestion(ctx, ctx.team.currentQuestion);
-  }
 }
 
 bot.action(/^answer_/, handleQuestionAnswer);
@@ -644,7 +567,10 @@ async function handleTeamSelection(ctx) {
 
   await ctx.reply(
     locales.addMembers,
-    Markup.removeKeyboard() // Убираем клавиатуру для свободного ввода
+    keyboards.mainMenu.getKeyboard(
+      services.admin.isAdmin(ctx.from.id),
+      services.admin.isGameActive
+    )
   );
 }
 
@@ -656,31 +582,6 @@ async function handleBeginQuest(ctx) {
 
   await ctx.reply(
     locales.startQuest,
-    keyboards.mainMenu.getKeyboard(
-      services.admin.isAdmin(ctx.from.id),
-      services.admin.isGameActive
-    )
-  );
-}
-
-async function handleMembersInput(ctx) {
-  // Проверяем что мы действительно ожидаем ввода участников
-  if (!ctx.team?.waitingForMembers) {
-    return ctx.reply(locales.useMenuButtons);
-  }
-
-  const members = ctx.message.text
-    .split(",")
-    .map((name) => name.trim())
-    .filter((name) => name.length > 0);
-
-  services.team.updateTeam(ctx.chat.id, {
-    members,
-    waitingForMembers: false, // Сбрасываем флаг ожидания
-  });
-
-  await ctx.reply(
-    locales.membersAdded.replace("%s", members.join(", ") || "не указаны"),
     keyboards.mainMenu.getKeyboard(
       services.admin.isAdmin(ctx.from.id),
       services.admin.isGameActive
@@ -701,7 +602,7 @@ async function handlePointSelection(ctx) {
   // Создаем кнопки для выбора точек
   const pointButtons = availablePoints.map(pointId =>
     Markup.button.callback(
-      `📍 Точка ${pointId} - ${keyboards.pointSelection.getPointDescription(pointId)}`,
+      `${keyboards.pointSelection.getPointDescription(pointId)}`,
       `point_${pointId}`
     )
   );
@@ -758,7 +659,6 @@ async function handlePointActivation(ctx) {
   });
 }
 
-// validate-questions.js
 const questions = require("./data/questions.json");
 
 questions.forEach((question) => {
@@ -845,7 +745,6 @@ async function handleQuestionAnswer(ctx) {
     .map(Number);
   const questions = require("./data/questions.json");
   const point = questions.find((p) => p.pointId === ctx.team.currentPoint);
-  const question = point.questions[questionIndex];
 
   const isFirstQuestion = (questionIndex === 0);
   const hasPenalty = await checkTimePenalty(ctx, questionIndex, isFirstQuestion);
@@ -858,26 +757,6 @@ async function handleQuestionAnswer(ctx) {
   await processQuestionAnswer(ctx, isCorrect, {
     isFirstQuestion,
     questionIndex,
-    point,
-    hasPenalty
-  });
-}
-
-async function handleTextQuestionAnswer(ctx) {
-  const questions = require("./data/questions.json");
-  const point = questions.find((p) => p.pointId === ctx.team.currentPoint);
-
-  const isFirstQuestion = (ctx.team.currentQuestion === 0);
-  const hasPenalty = await checkTimePenalty(ctx, ctx.team.currentQuestion, isFirstQuestion);
-  const isCorrect = services.team.verifyAnswer(
-    ctx.team.currentPoint,
-    ctx.team.currentQuestion,
-    ctx.message.text
-  );
-
-  await processQuestionAnswer(ctx, isCorrect, {
-    isFirstQuestion,
-    questionIndex: ctx.team.currentQuestion,
     point,
     hasPenalty
   });
@@ -1074,27 +953,22 @@ async function handleMembersInput(ctx) {
     .map((name) => name.trim())
     .filter((name) => name.length > 0);
 
-  if (members.length > 0) {
-    services.team.updateTeam(ctx.chat.id, {
-      members,
-      waitingForMembers: false,
-    });
+  services.team.updateTeam(ctx.chat.id, {
+    members,
+    waitingForMembers: false,
+  });
 
-    await ctx.reply(
-      locales.membersAdded.replace("%s", members.join(", ")),
-      keyboards.mainMenu.getKeyboard()
-    );
-  } else {
-    await ctx.reply(locales.invalidFormat);
-  }
+  await ctx.reply(
+    locales.membersAdded.replace("%s", members.join(", ")),
+    keyboards.mainMenu.getKeyboard( // Изменено здесь
+      services.admin.isAdmin(ctx.from.id),
+      services.admin.isGameActive
+    )
+  );
 }
 
 async function processQuestionAnswer(ctx, isCorrect, options) {
-  const { isFirstQuestion, questionIndex, point } = options;
-
-  // Проверяем временной интервал
-  const timeCheck = await checkTimePenalty(ctx, questionIndex, isFirstQuestion);
-  const hasPenalty = timeCheck.hasPenalty;
+  const { isFirstQuestion, questionIndex, point, hasPenalty } = options;
 
   const key = `${ctx.team.currentPoint}_${questionIndex}`;
   const currentPoints = ctx.team.questionPoints?.[key] || PENALTIES.BASE_QUESTION_POINTS;
@@ -1121,37 +995,42 @@ async function processQuestionAnswer(ctx, isCorrect, options) {
     // Сообщение о правильном ответе
     await ctx.reply(locales.correctAnswer.replace("%d", pointsToAdd) + penaltyMessage);
 
-    // Адаптивная стоимость следующего вопроса
-    const nextKey = `${ctx.team.currentPoint}_${questionIndex + 1}`;
-    if (hasPenalty && !isFirstQuestion && questionIndex < point.questions.length - 1) {
-      services.team.updateQuestionPoints(
-        ctx.chat.id,
-        ctx.team.currentPoint,
-        questionIndex + 1,
-        -3 // Снижаем стоимость следующего вопроса
-      );
-    }
-
     // Переход к следующему вопросу или завершение точки
     if (questionIndex < point.questions.length - 1) {
+      // Переходим к следующему вопросу
       services.team.updateTeam(ctx.chat.id, {
         currentQuestion: questionIndex + 1,
       });
       await askQuestion(ctx, questionIndex + 1);
     } else {
+      // Это был последний вопрос — завершаем точку
       const completedPointId = services.team.completePoint(
         ctx.chat.id,
         ctx.team.currentPoint
       );
+
+      const updatedTeam = services.team.getTeam(ctx.chat.id);
+
       await ctx.reply(
         locales.pointCompleted
           .replace("%d", completedPointId)
-          .replace("%d", services.team.getTeam(ctx.chat.id).points),
+          .replace("%d", updatedTeam.points),
         keyboards.mainMenu.getKeyboard(
           services.admin.isAdmin(ctx.from.id),
           services.admin.isGameActive
         )
       );
+
+      // Проверяем, завершен ли весь квест
+      const questions = require("./data/questions.json");
+      const totalPoints = [...new Set(questions.map(q => q.pointId))].length;
+
+      if (updatedTeam.completedPoints.length >= totalPoints) {
+        await showCompletionTime(ctx, updatedTeam);
+      }
+
+      // Проверяем и выдаем призы (если применимо)
+      await checkAndAwardPrizes(ctx, ctx.chat.id, updatedTeam.completedPoints.length);
     }
   } else {
     // Неправильный ответ
@@ -1213,25 +1092,29 @@ async function checkAndAwardPrizes(ctx, chatId, completedPointsCount) {
   const team = services.team.getTeam(chatId);
   if (!team) return;
 
-  // Если команда уже получала приз, пропускаем
-  if (services.team.hasPrize(chatId)) {
-    return;
-  }
-
   const thresholds = [4, 8, 10];
 
-  // Проверяем, достигли ли мы одного из порогов
   if (!thresholds.includes(completedPointsCount)) {
     return;
   }
 
   // Проверяем, не выдан ли уже приз за этот порог
   if (isPrizeAlreadyAwarded(completedPointsCount)) {
+    console.log(`Приз за ${completedPointsCount} точек уже выдан`);
+    return;
+  }
+
+  // Проверяем, не получала ли команда уже этот приз
+  if (services.team.hasPrize(chatId, completedPointsCount)) {
+    console.log(`Команда уже получала приз за ${completedPointsCount} точек`);
     return;
   }
 
   const prizeConfig = locales.prizes[completedPointsCount];
-  if (!prizeConfig) return;
+  if (!prizeConfig) {
+    console.log(`Нет конфигурации приза для ${completedPointsCount} точек`);
+    return;
+  }
 
   // Награждаем команду
   markPrizeAsAwarded(completedPointsCount, team.teamName, team.chatId);
