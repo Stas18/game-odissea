@@ -1,34 +1,25 @@
 [
   {
-    "chatId": 7644957461,
+    "chatId": 1147849296,
     "teamName": "Хабенские",
-    "captainId": 7644957461,
+    "captainId": 1147849296,
     "members": [
-      "Тони Старк",
-      "Брюс Уэйн",
-      "Питер Паркер"
+      "-"
     ],
-    "points": 15,
-    "completedPoints": [
-      1,
-      2,
-      3
-    ],
+    "points": 0,
+    "completedPoints": [],
     "completedMiniQuests": [],
-    "currentPoint": null,
+    "currentPoint": 13,
     "currentMiniQuest": null,
     "currentQuestion": 0,
     "totalQuestions": 0,
-    "startTime": "2025-09-17T14:06:17.440Z",
+    "startTime": "2025-09-17T18:22:34.528Z",
     "completionTime": null,
     "waitingForMembers": false,
     "waitingForBroadcast": false,
-    "lastAnswerTime": "2025-09-17T14:07:15.996Z",
-    "questionPoints": {
-      "1_0": 7,
-      "2_0": 7,
-      "3_0": 5
-    },
-    "pointActivationTime": "2025-09-17T14:07:07.486Z"
+    "lastAnswerTime": null,
+    "questionPoints": {},
+    "pointActivationTime": "2025-09-17T18:23:43.772Z",
+    "prizesReceived": []
   }
 ]

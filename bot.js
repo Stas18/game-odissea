@@ -334,7 +334,7 @@ bot.action("show_rules", async (ctx) => {
     "   • С вариантами ответа → нажмите кнопку с правильным вариантом\n" +
     "   • Текстовым → введите ответ вручную\n" +
     "– *Система начисления очков:*\n" +
-    "   • Правильный ответ: от 1 до 10 баллов (чем медленнее — тем больше баллов)\n" +
+    "   • Правильный ответ: от 1 до 10 баллов\n" +
     "   • Неправильный ответ: -3 балла (можно попробовать снова)\n" +
     "   • Слишком быстрый ответ (< ~n сек): -3 балла (вы не на локации!)\n\n" +
 
@@ -393,6 +393,29 @@ bot.action(/^show_map_/, async (ctx) => {
   }
 });
 
+bot.action("show_map", async (ctx) => {
+  await ctx.answerCbQuery();
+  try {
+    await ctx.replyWithPhoto(
+      {
+        source: "./assets/map.jpg",
+      },
+      {
+        caption: locales.mapMessage,
+        parse_mode: "Markdown",
+        ...Markup.inlineKeyboard([
+          [
+            { text: "⬅️ Назад", callback_data: "back_to_info" }
+          ]
+        ])
+      }
+    );
+  } catch (error) {
+    console.error("Error sending map:", error);
+    await ctx.reply("❌ Карта временно недоступна. Попробуйте позже.");
+  }
+});
+
 // ======================
 // Функции обработчиков
 // ======================
@@ -431,7 +454,6 @@ async function handleStart(ctx) {
 
 async function handleInfo(ctx) {
   try {
-    // Отправляем фото с QR-кодом
     await ctx.replyWithPhoto(
       {
         source: "./assets/donat/logo.jpg",
@@ -448,13 +470,15 @@ async function handleInfo(ctx) {
             { text: "🎬 О проекте", callback_data: "about_project" },
             { text: "📊 Правила", callback_data: "show_rules" },
           ],
-          [{ text: locales.donateButton, callback_data: "donate" }],
+          [
+            { text: locales.mapButton, callback_data: "show_map" },
+            { text: locales.donateButton, callback_data: "donate" }
+          ]
         ]),
       }
     );
   } catch (error) {
     console.error("Error in handleInfo:", error);
-    // Если фото не найдено, отправляем обычное сообщение
     await ctx.reply(locales.infoMessage, {
       parse_mode: "Markdown",
       ...Markup.inlineKeyboard([
@@ -466,7 +490,10 @@ async function handleInfo(ctx) {
           { text: "🎬 О проекте", callback_data: "about_project" },
           { text: "📊 Правила", callback_data: "show_rules" },
         ],
-        [{ text: locales.donateButton, callback_data: "donate" }],
+        [
+          { text: locales.mapButton, callback_data: "show_map" },
+          { text: locales.donateButton, callback_data: "donate" }
+        ]
       ]),
     });
   }
