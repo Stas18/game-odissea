@@ -4,6 +4,8 @@
     "teamName": "Безумцы с попкорном",
     "captainId": 7644957461,
     "members": [
+      "Тони Старк",
+      "Брюс Уэйн",
       "Питер Паркер"
     ],
     "points": 0,
@@ -13,7 +15,7 @@
     "currentMiniQuest": null,
     "currentQuestion": 0,
     "totalQuestions": 0,
-    "startTime": "2025-09-17T11:05:56.672Z",
+    "startTime": "2025-09-17T11:16:27.438Z",
     "waitingForMembers": false,
     "waitingForBroadcast": false,
     "lastAnswerTime": null,
@@ -24,7 +26,7 @@
     "teamName": "Хабенские",
     "captainId": 1147849296,
     "members": [
-      "Стас"
+      "-"
     ],
     "points": 0,
     "completedPoints": [],
@@ -33,7 +35,7 @@
     "currentMiniQuest": null,
     "currentQuestion": 0,
     "totalQuestions": 0,
-    "startTime": "2025-09-17T11:06:14.830Z",
+    "startTime": "2025-09-17T11:16:47.228Z",
     "waitingForMembers": false,
     "waitingForBroadcast": false,
     "lastAnswerTime": null,

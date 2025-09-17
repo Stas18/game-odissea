@@ -819,13 +819,28 @@ async function handleMiniQuestAnswer(ctx) {
         services.team.addPoints(ctx.chat.id, 5);
         await ctx.reply(
           locales.miniQuestCorrect.replace("%d", team.points + 5),
-          { parse_mode: "Markdown" }
+          { 
+            parse_mode: "Markdown",
+            ...keyboards.mainMenu.getKeyboard(
+              services.admin.isAdmin(ctx.from.id),
+              services.admin.isGameActive,
+              true, // isTeamRegistered
+              false // waitingForMembers
+            )
+          }
         );
       } else {
         await ctx.reply(locales.questAlreadyCompleted);
       }
     } else {
-      await ctx.reply(locales.miniQuestWrong);
+      await ctx.reply(locales.miniQuestWrong, {
+        ...keyboards.mainMenu.getKeyboard(
+          services.admin.isAdmin(ctx.from.id),
+          services.admin.isGameActive,
+          true, // isTeamRegistered
+          false // waitingForMembers
+        )
+      });
     }
 
     services.team.updateTeam(ctx.chat.id, updates);
@@ -904,6 +919,16 @@ async function handleBroadcastMessage(ctx) {
   if (!ctx.team?.waitingForBroadcast) return;
 
   const teams = services.team.getAllTeams();
+  
+  // Проверяем, есть ли команды для рассылки
+  if (teams.length === 0) {
+    await ctx.reply("❌ Нет зарегистрированных команд для рассылки");
+    services.team.updateTeam(ctx.chat.id, {
+      waitingForBroadcast: false,
+    });
+    return;
+  }
+
   const successCount = await services.admin.broadcastMessage(
     bot,
     ctx.message.text,
@@ -914,10 +939,16 @@ async function handleBroadcastMessage(ctx) {
     waitingForBroadcast: false,
   });
 
-  await ctx.reply(locales.broadcastSuccess.replace("%d", successCount), {
-    parse_mode: "Markdown",
-    ...keyboards.admin.getKeyboard(services.admin.getGameStatus())
-  });
+  if (successCount > 0) {
+    await ctx.reply(locales.broadcastSuccess.replace("%d", successCount), {
+      parse_mode: "Markdown",
+      ...keyboards.admin.getKeyboard(services.admin.getGameStatus())
+    });
+  } else {
+    await ctx.reply("❌ Не удалось отправить рассылку ни одной команде", {
+      ...keyboards.admin.getKeyboard(services.admin.getGameStatus())
+    });
+  }
 }
 
 async function handleMainMenu(ctx) {
@@ -1026,7 +1057,9 @@ async function processQuestionAnswer(ctx, isCorrect, options) {
           .replace("%d", updatedTeam.points),
         keyboards.mainMenu.getKeyboard(
           services.admin.isAdmin(ctx.from.id),
-          services.admin.isGameActive
+          services.admin.isGameActive,
+          true, // isTeamRegistered
+          false // waitingForMembers
         )
       );
 
@@ -1046,7 +1079,15 @@ async function processQuestionAnswer(ctx, isCorrect, options) {
     services.team.addPoints(ctx.chat.id, -PENALTIES.WRONG_ANSWER);
     await ctx.reply(
       getRandomWrongAnswerMessage(),
-      { parse_mode: "Markdown" }
+      { 
+        parse_mode: "Markdown",
+        ...keyboards.mainMenu.getKeyboard(
+          services.admin.isAdmin(ctx.from.id),
+          services.admin.isGameActive,
+          true, // isTeamRegistered
+          false // waitingForMembers
+        )
+      }
     );
 
     // Адаптивная стоимость при ошибке

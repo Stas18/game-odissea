@@ -51,18 +51,20 @@ class AdminService {
 
   async broadcastMessage(bot, message, teams) {
     let successCount = 0;
-    const adminIds = this.admins; // Получаем список ID админов
+    const adminIds = this.admins.map(id => Number(id)); // Преобразуем все ID в числа
 
-    for (const team of teams) {
+    // Фильтруем команды, исключая админов
+    const teamsToNotify = teams.filter(team => !adminIds.includes(Number(team.chatId)));
+
+    if (teamsToNotify.length === 0) {
+      return 0; // Нет команд для рассылки
+    }
+
+    for (const team of teamsToNotify) {
       try {
-        // Пропускаем админов, чтобы не отправлять сообщение самим себе
-        if (adminIds.includes(Number(team.chatId))) {
-          continue;
-        }
-
         await bot.telegram.sendMessage(
           team.chatId,
-          locales.broadcastMessage.replace("%s", message),
+          `${locales.broadcastMessage.replace("%s", message)}`,
           { parse_mode: 'Markdown' }
         );
         successCount++;
