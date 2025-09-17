@@ -119,13 +119,17 @@ bot.hears('🏆 Мои призы', async (ctx) => {
   const team = services.team.getTeam(ctx.chat.id);
   if (!team) return;
 
+  // Убедимся, что prizesReceived инициализирован
   if (!team.prizesReceived || team.prizesReceived.length === 0) {
     return ctx.reply('🎁 У вашей команды пока нет полученных призов.');
   }
 
   const prizes = team.prizesReceived.map(threshold => {
     const prize = locales.prizes[threshold];
-    return `🏆 ${threshold} точек: ${prize.promoCode} - ${prize.cafeName}`;
+    if (prize) {
+      return `🏆 ${threshold} точек: ${prize.promoCode} - ${prize.cafeName}`;
+    }
+    return `🏆 ${threshold} точек: Приз (детали недоступны)`;
   }).join('\n');
 
   await ctx.reply(`🎁 *Ваши призы:*\n\n${prizes}`, { parse_mode: 'Markdown' });
@@ -1110,7 +1114,7 @@ async function processQuestionAnswer(ctx, isCorrect, options) {
         await showCompletionTime(ctx, updatedTeam);
       }
 
-      // Проверяем и выдаем призы (если применимо)
+      // Проверяем и выдаем призы (если применимо) - ВАЖНО: только при завершении точки
       await checkAndAwardPrizes(ctx, ctx.chat.id, updatedTeam.completedPoints.length);
     }
   } else {
@@ -1183,13 +1187,14 @@ async function checkAndAwardPrizes(ctx, chatId, completedPointsCount) {
 
   const thresholds = [4, 8, 10];
 
+  // Проверяем, достигли ли мы одного из порогов призов
   if (!thresholds.includes(completedPointsCount)) {
     return;
   }
 
   // Проверяем, не выдан ли уже приз за этот порог
   if (isPrizeAlreadyAwarded(completedPointsCount)) {
-    console.log(`Приз за ${completedPointsCount} точек уже выдан`);
+    console.log(`Приз за ${completedPointsCount} точек уже выдан другой команде`);
     return;
   }
 
@@ -1205,7 +1210,7 @@ async function checkAndAwardPrizes(ctx, chatId, completedPointsCount) {
     return;
   }
 
-  // Награждаем команду
+  // Награждаем команду - только если приз еще не выдан
   markPrizeAsAwarded(completedPointsCount, team.teamName, team.chatId);
   services.team.addPrize(chatId, completedPointsCount);
 
@@ -1236,11 +1241,35 @@ async function checkAndAwardPrizes(ctx, chatId, completedPointsCount) {
     ]
   ]);
 
-  // Отправляем сообщение с промокодом
-  await ctx.reply(message, {
-    parse_mode: 'Markdown',
-    ...keyboard
-  });
+  // Отправляем сообщение с промокодом ТОЛЬКО команде-получателю
+  try {
+    await bot.telegram.sendMessage(
+      chatId,
+      message,
+      {
+        parse_mode: 'Markdown',
+        ...keyboard
+      }
+    );
+  } catch (err) {
+    console.error(`Ошибка отправки приза команде ${chatId}:`, err);
+  }
+
+  // Также отправляем уведомление админам
+  const admins = services.admin.admins;
+  for (const adminId of admins) {
+    try {
+      await bot.telegram.sendMessage(
+        adminId,
+        `🎉 Команда "${team.teamName}" получила приз за ${completedPointsCount} точек!\n` +
+        `Промокод: ${prizeConfig.promoCode}\n` +
+        `Кафе: ${prizeConfig.cafeName}`,
+        { parse_mode: 'Markdown' }
+      );
+    } catch (err) {
+      console.error(`Ошибка отправки уведомления админу ${adminId}:`, err);
+    }
+  }
 }
 
 // ======================
