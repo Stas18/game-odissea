@@ -895,10 +895,12 @@ async function handleBroadcast(ctx) {
     waitingForBroadcast: true,
     waitingForMembers: false,
   });
-  await ctx.reply(locales.broadcastPrompt);
+  await ctx.reply(locales.broadcastPrompt, Markup.removeKeyboard());
 }
 
 async function handleBroadcastMessage(ctx) {
+  if (!ctx.team?.waitingForBroadcast) return;
+  
   const teams = services.team.getAllTeams();
   const successCount = await services.admin.broadcastMessage(
     bot,
@@ -912,6 +914,7 @@ async function handleBroadcastMessage(ctx) {
 
   await ctx.reply(locales.broadcastSuccess.replace("%d", successCount), {
     parse_mode: "Markdown",
+    ...keyboards.admin.getKeyboard(services.admin.getGameStatus())
   });
 }
 
