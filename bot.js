@@ -1660,7 +1660,7 @@ async function checkAndAwardPrizes(ctx, chatId, completedPointsCount) {
         adminId,
         `🎉 Команда "${team.teamName}" получила приз за ${completedPointsCount} точек!\n` +
         `Промокод: ${prizeConfig.promoCode}\n` +
-        `Кафеня: ${prizeConfig.cafeName}`,
+        `Кофейня: ${prizeConfig.cafeName}`,
         { parse_mode: 'Markdown' }
       );
     } catch (err) {
