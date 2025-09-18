@@ -2,6 +2,7 @@ const { Telegraf, Markup } = require("telegraf");
 
 require("dotenv").config();
 
+const bot = new Telegraf(process.env.BOT_TOKEN);
 const TeamService = require("./services/TeamService");
 const QuestService = require("./services/QuestService");
 const AdminService = require("./services/AdminService");
@@ -14,61 +15,19 @@ const keyboards = {
   pointSelection: require("./keyboards/pointSelection"),
   admin: require("./keyboards/adminKeyboard"),
 };
-
 const services = {
   team: new TeamService(),
   quest: new QuestService(),
   admin: new AdminService(),
 };
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
-
-// ======================
-// Функции для проверки временных интервалов, константы для штрафа за код
-// ======================
-
 const PENALTIES = {
   BASE_QUESTION_POINTS: 10,  // Начальная стоимость вопроса
   WRONG_ANSWER: 1,           // Штраф за ошибку
   TOO_FAST_ANSWER: 3,        // Штраф за скорость
   WRONG_CODE: 1,             // Штраф за неверный код
-  MIN_TIME_BETWEEN_ANSWERS: 70 // Минимальное время между ответами (71 сек)
+  MIN_TIME_BETWEEN_ANSWERS: 5 // Минимальное время между ответами (71 сек)
 };
-
-async function checkTimePenalty(ctx, questionIndex) {
-  let referenceTime;
-
-  if (questionIndex === 0) {
-    // Для первого вопроса используем время активации точки
-    referenceTime = new Date(ctx.team.pointActivationTime);
-  } else {
-    // Для последующих вопросов используем время последнего ответа
-    referenceTime = new Date(ctx.team.lastAnswerTime || ctx.team.pointActivationTime);
-  }
-
-  const now = new Date();
-  const timeDiff = (now - referenceTime) / 1000; // Разница в секундах
-
-  // Штрафуем если ответили слишком быстро
-  return {
-    hasPenalty: timeDiff < PENALTIES.MIN_TIME_BETWEEN_ANSWERS,
-    timeDiff: timeDiff
-  };
-}
-
-// Получение случайного сообщения о слишком быстром ответе
-function getRandomTooFastMessage() {
-  return locales.penaltyMessages.tooFast[
-    Math.floor(Math.random() * locales.penaltyMessages.tooFast.length)
-  ];
-}
-
-// Получение случайного сообщения о неправильном ответе
-function getRandomWrongAnswerMessage() {
-  return locales.penaltyMessages.wrongAnswer[
-    Math.floor(Math.random() * locales.penaltyMessages.wrongAnswer.length)
-  ];
-}
 
 // Список команд для регистрации
 const teamOptions = [
@@ -83,9 +42,28 @@ const teamOptions = [
   { name: "Хабенские", id: "team_9" },
 ];
 
+
 // ======================
-// Middlewares
+// Команды бота
 // ======================
+bot.command("start", handleStart);
+bot.command("admin", handleAdminPanel);
+bot.action(/^team_/, handleTeamSelection);
+bot.action("reset_confirm", handleResetConfirm);
+bot.action("reset_cancel", handleResetCancel);
+bot.action(/^point_/, handlePointActivation);
+bot.hears("▶ Начать квест", handleBeginQuest);
+bot.hears("🌍 Выбрать точку", handlePointSelection);
+bot.hears("🎲 Мини-квест", handleMiniQuest);
+bot.hears("📊 Прогресс", handleProgress);
+bot.hears("🏆 Топ команд", handleTopTeams);
+bot.hears("📊 Статистика", handleStats);
+bot.hears("🔄 Сбросить прогресс", handleResetConfirmation);
+bot.hears("📢 Рассылка", handleBroadcast);
+bot.hears("🏆 Показать топ", handleTopTeams);
+bot.hears("⬅️ В главное меню", handleMainMenu);
+bot.hears("👑 Админ-панель", handleAdminPanel);
+bot.hears("ℹ️ Информация", handleInfo);
 
 bot.use(async (ctx, next) => {
   if (services.team.isTeamRegistered(ctx.chat.id)) {
@@ -207,32 +185,8 @@ bot.hears(locales.gameStopButton, async (ctx) => {
 });
 
 // ======================
-// Команды бота
-// ======================
-
-bot.command("start", handleStart);
-bot.action(/^team_/, handleTeamSelection);
-bot.hears("▶ Начать квест", handleBeginQuest);
-bot.hears("🌍 Выбрать точку", handlePointSelection);
-bot.action(/^point_/, handlePointActivation);
-bot.hears("🎲 Мини-квест", handleMiniQuest);
-bot.hears("📊 Прогресс", handleProgress);
-bot.hears("🏆 Топ команд", handleTopTeams);
-bot.command("admin", handleAdminPanel);
-bot.hears("📊 Статистика", handleStats);
-bot.hears("🔄 Сбросить прогресс", handleResetConfirmation);
-bot.hears("📢 Рассылка", handleBroadcast);
-bot.hears("🏆 Показать топ", handleTopTeams);
-bot.hears("⬅️ В главное меню", handleMainMenu);
-bot.hears("👑 Админ-панель", handleAdminPanel);
-bot.hears("ℹ️ Информация", handleInfo);
-bot.action("reset_confirm", handleResetConfirm);
-bot.action("reset_cancel", handleResetCancel);
-
-// ======================
 // Обработчики сообщений
 // ======================
-
 bot.on("text", async (ctx) => {
   if (ctx.team?.waitingForMembers) {
     return handleMembersInput(ctx);
@@ -273,21 +227,6 @@ bot.on("text", async (ctx) => {
     }
   }
 });
-
-async function showCompletionTime(ctx, team) {
-  const startTime = new Date(team.startTime);
-  const endTime = new Date();
-  const duration = endTime - startTime;
-  const hours = Math.floor(duration / 3600000);
-  const minutes = Math.floor((duration % 3600000) / 60000);
-
-  await ctx.reply(
-    `🎉 *Квест завершен!*\n⏱ Ваше время: ${hours}ч ${minutes}м`,
-    { parse_mode: 'Markdown' }
-  );
-}
-
-bot.action(/^answer_/, handleQuestionAnswer);
 
 bot.action("contact_org", async (ctx) => {
   await ctx.answerCbQuery();
@@ -420,89 +359,6 @@ bot.action("show_map", async (ctx) => {
   }
 });
 
-// ======================
-// Функции обработчиков
-// ======================
-
-async function handleStart(ctx) {
-  if (services.team.isTeamRegistered(ctx.chat.id)) {
-    const team = services.team.getTeam(ctx.chat.id);
-    const isGameActive = services.admin.isGameActive;
-    const isTeamRegistered = services.team.isTeamRegistered(ctx.chat.id);
-
-    if (team.waitingForMembers) {
-      return ctx.reply(locales.addMembers, Markup.removeKeyboard());
-    }
-
-    // Всегда показываем кнопки для зарегистрированных команд с учетом статуса игры
-    return ctx.reply(
-      locales.alreadyRegistered,
-      keyboards.mainMenu.getKeyboard(
-        services.admin.isAdmin(ctx.from.id),
-        isGameActive,
-        isTeamRegistered,
-        team.waitingForMembers
-      )
-    );
-  }
-
-  const teamButtons = teamOptions.map((team) =>
-    Markup.button.callback(team.name, team.id)
-  );
-
-  await ctx.reply(
-    locales.welcomeMessage,
-    Markup.inlineKeyboard(teamButtons, { columns: 2 })
-  );
-}
-
-async function handleInfo(ctx) {
-  try {
-    await ctx.replyWithPhoto(
-      {
-        source: "./assets/donat/logo.jpg",
-      },
-      {
-        caption: locales.infoMessage,
-        parse_mode: "Markdown",
-        ...Markup.inlineKeyboard([
-          [
-            { text: "📞 Поддержка", callback_data: "contact_support" },
-            { text: "🌐 Сайт", url: "https://ulysses-club.github.io/odissea/" },
-          ],
-          [
-            { text: "🎬 О проекте", callback_data: "about_project" },
-            { text: "📊 Правила", callback_data: "show_rules" },
-          ],
-          [
-            { text: locales.mapButton, callback_data: "show_map" },
-            { text: locales.donateButton, callback_data: "donate" }
-          ]
-        ]),
-      }
-    );
-  } catch (error) {
-    console.error("Error in handleInfo:", error);
-    await ctx.reply(locales.infoMessage, {
-      parse_mode: "Markdown",
-      ...Markup.inlineKeyboard([
-        [
-          { text: "📞 Поддержка", callback_data: "contact_support" },
-          { text: "🌐 Сайт", url: "https://ulysses-club.github.io/odissea/" },
-        ],
-        [
-          { text: "🎬 О проекте", callback_data: "about_project" },
-          { text: "📊 Правила", callback_data: "show_rules" },
-        ],
-        [
-          { text: locales.mapButton, callback_data: "show_map" },
-          { text: locales.donateButton, callback_data: "donate" }
-        ]
-      ]),
-    });
-  }
-}
-
 bot.action("donate", async (ctx) => {
   await ctx.answerCbQuery();
   try {
@@ -526,11 +382,11 @@ bot.hears("📋 Статус завершения", async (ctx) => {
   const questions = require("./data/questions.json");
   const totalPoints = [...new Set(questions.map(q => q.pointId))].length;
   const teams = services.team.getAllTeams();
-  
-  const completedTeams = teams.filter(team => 
+
+  const completedTeams = teams.filter(team =>
     team.completedPoints && team.completedPoints.length >= totalPoints
   );
-  const incompleteTeams = teams.filter(team => 
+  const incompleteTeams = teams.filter(team =>
     !team.completedPoints || team.completedPoints.length < totalPoints
   );
 
@@ -585,6 +441,146 @@ bot.command("donate", async (ctx) => {
   }
 });
 
+bot.action(/^answer_/, async (ctx) => {
+  try {
+    await handleQuestionAnswer(ctx);
+  } catch (error) {
+    console.error("Error handling question answer:", error);
+    await ctx.answerCbQuery("Произошла ошибка, попробуйте еще раз");
+  }
+});
+
+/**
+ * Обрабатывает команду /start — регистрацию или возврат в главное меню.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — отправляет сообщение с выбором команды или главным меню.
+ * 
+ * @description
+ * Если команда уже зарегистрирована — показывает главное меню с учетом статуса игры и ожидания участников.
+ * Если нет — предлагает выбрать название команды через inline-кнопки.
+ */
+async function handleStart(ctx) {
+  if (services.team.isTeamRegistered(ctx.chat.id)) {
+    const team = services.team.getTeam(ctx.chat.id);
+    const isGameActive = services.admin.isGameActive;
+    const isTeamRegistered = services.team.isTeamRegistered(ctx.chat.id);
+
+    if (team.waitingForMembers) {
+      return ctx.reply(locales.addMembers, Markup.removeKeyboard());
+    }
+
+    // Всегда показываем кнопки для зарегистрированных команд с учетом статуса игры
+    return ctx.reply(
+      locales.alreadyRegistered,
+      keyboards.mainMenu.getKeyboard(
+        services.admin.isAdmin(ctx.from.id),
+        isGameActive,
+        isTeamRegistered,
+        team.waitingForMembers
+      )
+    );
+  }
+
+  const teamButtons = teamOptions.map((team) =>
+    Markup.button.callback(team.name, team.id)
+  );
+
+  await ctx.reply(
+    locales.welcomeMessage,
+    Markup.inlineKeyboard(teamButtons, { columns: 2 })
+  );
+}
+
+/**
+ * Отображает время завершения квеста командой.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @param {Object} team — объект команды с полем startTime.
+ * @returns {Promise<void>} — отправляет сообщение с поздравлением и временем прохождения.
+ * 
+ * @description
+ * Используется при завершении квеста. Форматирует разницу между startTime и текущим временем.
+ */
+async function showCompletionTime(ctx, team) {
+  const startTime = new Date(team.startTime);
+  const endTime = new Date();
+  const duration = endTime - startTime;
+  const hours = Math.floor(duration / 3600000);
+  const minutes = Math.floor((duration % 3600000) / 60000);
+
+  await ctx.reply(
+    `🎉 *Квест завершен!*\n⏱ Ваше время: ${hours}ч ${minutes}м`,
+    { parse_mode: 'Markdown' }
+  );
+}
+
+/**
+ * Обрабатывает команду /info — отправляет информацию о проекте с фото и кнопками.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — отправляет фото с описанием и inline-кнопками.
+ * 
+ * @description
+ * Включает ссылку на сайт проекта, кнопки поддержки, правил, карты и доната.
+ * При ошибке отправляет текст без фото.
+ */
+async function handleInfo(ctx) {
+  try {
+    await ctx.replyWithPhoto(
+      {
+        source: "./assets/donat/logo.jpg",
+      },
+      {
+        caption: locales.infoMessage,
+        parse_mode: "Markdown",
+        ...Markup.inlineKeyboard([
+          [
+            { text: "📞 Поддержка", callback_data: "contact_support" },
+            { text: "🌐 Сайт", url: "https://ulysses-club.github.io/odissea/" },
+          ],
+          [
+            { text: "🎬 О проекте", callback_data: "about_project" },
+            { text: "📊 Правила", callback_data: "show_rules" },
+          ],
+          [
+            { text: locales.mapButton, callback_data: "show_map" },
+            { text: locales.donateButton, callback_data: "donate" }
+          ]
+        ]),
+      }
+    );
+  } catch (error) {
+    console.error("Error in handleInfo:", error);
+    await ctx.reply(locales.infoMessage, {
+      parse_mode: "Markdown",
+      ...Markup.inlineKeyboard([
+        [
+          { text: "📞 Поддержка", callback_data: "contact_support" },
+          { text: "🌐 Сайт", url: "https://ulysses-club.github.io/odissea/" },
+        ],
+        [
+          { text: "🎬 О проекте", callback_data: "about_project" },
+          { text: "📊 Правила", callback_data: "show_rules" },
+        ],
+        [
+          { text: locales.mapButton, callback_data: "show_map" },
+          { text: locales.donateButton, callback_data: "donate" }
+        ]
+      ]),
+    });
+  }
+}
+
+/**
+ * Обрабатывает выбор названия команды через callback-кнопку.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — регистрирует команду или возвращает ошибку, если название занято.
+ * 
+ * @description
+ * После успешной регистрации переводит команду в состояние ожидания участников.
+ */
 async function handleTeamSelection(ctx) {
   const selectedTeam = teamOptions.find(
     (team) => team.id === ctx.callbackQuery.data
@@ -630,6 +626,15 @@ async function handleTeamSelection(ctx) {
   );
 }
 
+/**
+ * Обрабатывает начало квеста командой.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — отправляет приветственное сообщение и главное меню.
+ * 
+ * @description
+ * Проверяет, активна ли игра. Только админы могут начать вне активной игры.
+ */
 async function handleBeginQuest(ctx) {
   // Всегда проверяем активность игры
   if (!services.admin.isGameActive && !services.admin.isAdmin(ctx.from.id)) {
@@ -645,10 +650,22 @@ async function handleBeginQuest(ctx) {
   );
 }
 
+/**
+ * Предлагает команде выбрать точку для прохождения.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — отправляет inline-кнопки с доступными точками.
+ * 
+ * @description
+ * Фильтрует только непройденные точки. Если все пройдены — сообщает об этом.
+ */
 async function handlePointSelection(ctx) {
   const questions = require("./data/questions.json");
+  const team = services.team.getTeam(ctx.chat.id);
+
+  // Фильтруем только непройденные точки
   const availablePoints = [...new Set(questions.map((q) => q.pointId))].filter(
-    (p) => !ctx.team?.completedPoints?.includes(p)
+    (p) => !team?.completedPoints?.includes(p)
   );
 
   if (availablePoints.length === 0) {
@@ -656,12 +673,13 @@ async function handlePointSelection(ctx) {
   }
 
   // Создаем кнопки для выбора точек
-  const pointButtons = availablePoints.map(pointId =>
-    Markup.button.callback(
-      `${keyboards.pointSelection.getPointDescription(pointId)}`,
+  const pointButtons = availablePoints.map(pointId => {
+    const pointDescription = keyboards.pointSelection.getPointDescription(pointId);
+    return Markup.button.callback(
+      `📍 Точка ${pointId} - ${pointDescription}`,
       `point_${pointId}`
-    )
-  );
+    );
+  });
 
   await ctx.reply(
     locales.selectPoint,
@@ -669,6 +687,15 @@ async function handlePointSelection(ctx) {
   );
 }
 
+/**
+ * Активирует выбранную точку: отправляет фото, описание и подсказку, фиксирует время активации.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — отправляет информацию о точке и устанавливает состояние команды.
+ * 
+ * @description
+ * Важно: фиксирует pointActivationTime для корректного расчета штрафов за скорость на первом вопросе.
+ */
 async function handlePointActivation(ctx) {
   const pointId = parseInt(ctx.callbackQuery.data.split("_")[1]);
   const questions = require("./data/questions.json");
@@ -728,6 +755,15 @@ questions.forEach((question) => {
   }
 });
 
+/**
+ * Проверяет введенный код активации точки.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — если код верный — запускает первый вопрос; если нет — штраф.
+ * 
+ * @description
+ * При успешной верификации фиксирует время первого вопроса и запускает askQuestion.
+ */
 async function handlePointCode(ctx) {
   const code = ctx.message.text.trim();
   const team = ctx.team;
@@ -755,6 +791,16 @@ async function handlePointCode(ctx) {
   }
 }
 
+/**
+ * Задает вопрос команде (текстовый или с вариантами).
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @param {number} questionIndex — индекс вопроса в массиве вопросов точки.
+ * @returns {Promise<void>} — отправляет текст вопроса и кнопки (если есть варианты).
+ * 
+ * @description
+ * Отображает текущее количество доступных баллов за вопрос.
+ */
 async function askQuestion(ctx, questionIndex) {
   const questions = require("./data/questions.json");
   const point = questions.find((p) => p.pointId === ctx.team.currentPoint);
@@ -796,18 +842,37 @@ async function askQuestion(ctx, questionIndex) {
   }
 }
 
+/**
+ * Обрабатывает ответ на вопрос с вариантами (через callback).
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — проверяет правильность, применяет штрафы, начисляет баллы.
+ * 
+ * @description
+ * Вызывает processQuestionAnswer после проверки времени и правильности.
+ */
 async function handleQuestionAnswer(ctx) {
   const [_, questionIndex, answerIndex] = ctx.callbackQuery.data
     .split("_")
     .map(Number);
+
+  // Получаем данные о текущей точке
   const questions = require("./data/questions.json");
   const point = questions.find((p) => p.pointId === ctx.team.currentPoint);
 
+  if (!point) {
+    await ctx.answerCbQuery("Ошибка: точка не найдена");
+    return;
+  }
+
+  // Проверяем штраф за скорость
   const hasPenalty = await checkTimePenalty(ctx, questionIndex);
+
+  // Проверяем ответ (передаем answerIndex как число, а не строку)
   const isCorrect = services.team.verifyAnswer(
     ctx.team.currentPoint,
     questionIndex,
-    answerIndex.toString()
+    answerIndex // передаем число, а не строку
   );
 
   await processQuestionAnswer(ctx, isCorrect, {
@@ -815,8 +880,20 @@ async function handleQuestionAnswer(ctx) {
     point,
     hasPenalty
   });
+
+  // Подтверждаем обработку callback
+  await ctx.answerCbQuery();
 }
 
+/**
+ * Активирует случайный доступный мини-квест.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — отправляет задание мини-квеста или сообщение об отсутствии.
+ * 
+ * @description
+ * Устанавливает текущий мини-квест в состояние команды.
+ */
 async function handleMiniQuest(ctx) {
   try {
     const team = ctx.team;
@@ -848,6 +925,15 @@ async function handleMiniQuest(ctx) {
   }
 }
 
+/**
+ * Обрабатывает ответ на мини-квест.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — если верно — начисляет баллы и обновляет статус; если нет — штраф.
+ * 
+ * @description
+ * После ответа сбрасывает состояние мини-квеста и возвращает главное меню.
+ */
 async function handleMiniQuestAnswer(ctx) {
   try {
     const team = ctx.team;
@@ -903,6 +989,15 @@ async function handleMiniQuestAnswer(ctx) {
   }
 }
 
+/**
+ * Отображает прогресс команды: участники, баллы, пройденные точки и мини-квесты, время в игре.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — отправляет статистику команды в формате Markdown.
+ * 
+ * @description
+ * Если квест завершен — добавляет время завершения.
+ */
 async function handleProgress(ctx) {
   const progress = services.team.getTeamProgress(ctx.chat.id);
   if (!progress) return;
@@ -928,6 +1023,15 @@ async function handleProgress(ctx) {
   await ctx.reply(message, { parse_mode: "Markdown" });
 }
 
+/**
+ * Отображает топ команд по баллам.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — отправляет отформатированный список топ-команд.
+ * 
+ * @description
+ * Использует services.admin.getTopTeams.
+ */
 async function handleTopTeams(ctx) {
   const topTeams = services.admin.getTopTeams(
     services.team.getAllTeams(),
@@ -936,6 +1040,15 @@ async function handleTopTeams(ctx) {
   await ctx.reply(topTeams, { parse_mode: "Markdown" });
 }
 
+/**
+ * Открывает панель администратора.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — отправляет меню админа, если пользователь — админ.
+ * 
+ * @description
+ * Проверяет права через services.admin.isAdmin.
+ */
 async function handleAdminPanel(ctx) {
   if (!services.admin.isAdmin(ctx.from.id)) return;
   ctx.reply(locales.adminPanel, {
@@ -944,6 +1057,15 @@ async function handleAdminPanel(ctx) {
   });
 }
 
+/**
+ * Отображает полную статистику игры (только для админов).
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — отправляет статистику в Markdown.
+ * 
+ * @description
+ * Использует services.admin.getFullStats.
+ */
 async function handleStats(ctx) {
   if (!services.admin.isAdmin(ctx.from.id)) return;
 
@@ -951,6 +1073,15 @@ async function handleStats(ctx) {
   ctx.reply(stats, { parse_mode: "Markdown" });
 }
 
+/**
+ * Запрашивает подтверждение сброса всех команд.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — отправляет inline-кнопки подтверждения/отмены.
+ * 
+ * @description
+ * Только для админов.
+ */
 async function handleResetConfirmation(ctx) {
   if (!services.admin.isAdmin(ctx.from.id)) return;
 
@@ -965,6 +1096,15 @@ async function handleResetConfirmation(ctx) {
   });
 }
 
+/**
+ * Переводит админа в режим ввода сообщения для рассылки.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — устанавливает флаг waitingForBroadcast и убирает клавиатуру.
+ * 
+ * @description
+ * Только для админов.
+ */
 async function handleBroadcast(ctx) {
   if (!services.admin.isAdmin(ctx.from.id)) return;
 
@@ -972,11 +1112,22 @@ async function handleBroadcast(ctx) {
     waitingForBroadcast: true,
     waitingForMembers: false,
   });
+  
   await ctx.reply(locales.broadcastPrompt, Markup.removeKeyboard());
 }
 
+/**
+ * Отправляет рассылку всем командам.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — отправляет сообщение всем командам и показывает статистику доставки.
+ * 
+ * @description
+ * Только для админов. После отправки сбрасывает флаг waitingForBroadcast.
+ */
 async function handleBroadcastMessage(ctx) {
   if (!ctx.team?.waitingForBroadcast) return;
+  if (!services.admin.isAdmin(ctx.from.id)) return;
 
   const teams = services.team.getAllTeams();
 
@@ -1011,10 +1162,25 @@ async function handleBroadcastMessage(ctx) {
   }
 }
 
+/**
+ * Открывает главное меню.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — отправляет главное меню.
+ */
 async function handleMainMenu(ctx) {
   ctx.reply(locales.mainMenu, keyboards.mainMenu.getKeyboard());
 }
 
+/**
+ * Подтверждает и выполняет сброс всех команд.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — сбрасывает команды, уведомляет их и админов.
+ * 
+ * @description
+ * Только для админов. Уведомляет каждую команду о сбросе.
+ */
 async function handleResetConfirm(ctx) {
   if (!services.admin.isAdmin(ctx.from.id)) return;
 
@@ -1036,6 +1202,15 @@ async function handleResetConfirm(ctx) {
   await handleAdminPanel(ctx);
 }
 
+/**
+ * Отменяет сброс команд.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — отправляет сообщение об отмене и возвращает в админ-панель.
+ * 
+ * @description
+ * Только для админов.
+ */
 async function handleResetCancel(ctx) {
   if (!services.admin.isAdmin(ctx.from.id)) return;
 
@@ -1043,6 +1218,15 @@ async function handleResetCancel(ctx) {
   await handleAdminPanel(ctx);
 }
 
+/**
+ * Обрабатывает ввод списка участников команды.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @returns {Promise<void>} — сохраняет участников и показывает главное меню.
+ * 
+ * @description
+ * Ожидается строка с именами, разделенными запятыми.
+ */
 async function handleMembersInput(ctx) {
   const members = ctx.message.text
     .split(",")
@@ -1067,6 +1251,17 @@ async function handleMembersInput(ctx) {
   );
 }
 
+/**
+ * Обрабатывает правильный/неправильный ответ на вопрос, начисляет/снимает баллы, применяет штрафы.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @param {boolean} isCorrect — правильный ли ответ.
+ * @param {Object} options — дополнительные параметры: questionIndex, point, hasPenalty.
+ * @returns {Promise<void>} — обновляет состояние, отправляет сообщения, переходит к следующему вопросу или точке.
+ * 
+ * @description
+ * При последнем вопросе завершает точку, проверяет завершение квеста, выдает призы.
+ */
 async function processQuestionAnswer(ctx, isCorrect, options) {
   const { questionIndex, point } = options;
 
@@ -1197,7 +1392,67 @@ async function processQuestionAnswer(ctx, isCorrect, options) {
   }
 }
 
-// Функции для работы с призами
+/**
+ * Проверяет, не ответила ли команда слишком быстро (меньше MIN_TIME_BETWEEN_ANSWERS секунд).
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @param {number} questionIndex — индекс текущего вопроса.
+ * @returns {Promise<{hasPenalty: boolean, timeDiff: number}>} — объект с флагом штрафа и разницей во времени.
+ * 
+ * @description
+ * Для первого вопроса использует pointActivationTime, для остальных — lastAnswerTime.
+ */
+async function checkTimePenalty(ctx, questionIndex) {
+  let referenceTime;
+
+  if (questionIndex === 0) {
+    // Для первого вопроса используем время активации точки
+    referenceTime = new Date(ctx.team.pointActivationTime);
+  } else {
+    // Для последующих вопросов используем время последнего ответа
+    referenceTime = new Date(ctx.team.lastAnswerTime || ctx.team.pointActivationTime);
+  }
+
+  const now = new Date();
+  const timeDiff = (now - referenceTime) / 1000; // Разница в секундах
+
+  // Штрафуем если ответили слишком быстро
+  return {
+    hasPenalty: timeDiff < PENALTIES.MIN_TIME_BETWEEN_ANSWERS,
+    timeDiff: timeDiff
+  };
+}
+
+/**
+ * Возвращает сообщение о слишком быстром ответе.
+ * 
+ * @returns {string} — одно из сообщений из locales.penaltyMessages.tooFast.
+ */
+function getRandomTooFastMessage() {
+  return locales.penaltyMessages.tooFast[
+    Math.floor(Math.random() * locales.penaltyMessages.tooFast.length)
+  ];
+}
+
+/**
+ * Возвращает сообщение о неправильном ответе.
+ * 
+ * @returns {string} — одно из сообщений из locales.penaltyMessages.wrongAnswer.
+ */
+function getRandomWrongAnswerMessage() {
+  return locales.penaltyMessages.wrongAnswer[
+    Math.floor(Math.random() * locales.penaltyMessages.wrongAnswer.length)
+  ];
+}
+
+/**
+ * Читает данные о выданных призах из файла prizes.json.
+ * 
+ * @returns {Object} — объект с выданными призами по количеству точек.
+ * 
+ * @description
+ * При ошибке возвращает пустой объект.
+ */
 function readPrizes() {
   try {
     if (fs.existsSync(prizesFile)) {
@@ -1211,6 +1466,14 @@ function readPrizes() {
   }
 }
 
+/**
+ * Записывает данные о выданных призах в файл prizes.json.
+ * 
+ * @param {Object} data — объект с данными о призах.
+ * 
+ * @description
+ * При ошибке логирует сообщение.
+ */
 function writePrizes(data) {
   try {
     fs.writeFileSync(prizesFile, JSON.stringify(data, null, 2));
@@ -1219,6 +1482,18 @@ function writePrizes(data) {
   }
 }
 
+/**
+ * Проверяет, достигла ли команда порога для получения приза, и выдает его, если еще не выдан.
+ * 
+ * @param {Object} ctx — контекст Telegram-бота.
+ * @param {number} chatId — ID чата команды.
+ * @param {number} completedPointsCount — количество пройденных точек.
+ * @returns {Promise<void>} — отправляет команде и админам сообщение с промокодом и картами.
+ * 
+ * @description
+ * Проверяет глобальное состояние призов — приз за N точек может получить только одна команда.
+ * Отправляет кнопки навигации (Google Maps, Яндекс.Карты, 2GIS).
+ */
 async function checkAndAwardPrizes(ctx, chatId, completedPointsCount) {
   const team = services.team.getTeam(chatId);
   if (!team) return;
@@ -1321,7 +1596,6 @@ async function checkAndAwardPrizes(ctx, chatId, completedPointsCount) {
 // ======================
 // Запуск бота
 // ======================
-
 bot
   .launch()
   .then(() => console.log("🎬 Бот успешно запущен!"))

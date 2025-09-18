@@ -342,12 +342,13 @@ class TeamService {
 
     // Если это карточки (массив options)
     if (Array.isArray(question.options)) {
-      const answerIndex = parseInt(answer);
+      // Приводим ответ к числу (для кнопочных ответов)
+      const answerIndex = typeof answer === 'string' ? parseInt(answer) : answer;
       return !isNaN(answerIndex) && answerIndex === question.answer;
     }
 
     // Если это текстовый ответ (строка options)
-    return answer.trim().toLowerCase() === question.options.toLowerCase();
+    return answer.toString().trim().toLowerCase() === question.options.toLowerCase();
   }
 
   /**
