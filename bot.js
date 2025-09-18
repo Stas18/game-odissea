@@ -328,7 +328,7 @@ bot.action("show_rules", async (ctx) => {
     "– Минимум за вопрос: 1 балл\n\n" +
 
     "🌟 *Удачи в прохождении! Пусть сила (и хорошее кино) будут с вами!* 🎥",
-    { 
+    {
       parse_mode: "Markdown",
       ...Markup.inlineKeyboard([
         [{ text: "⬅️ Назад", callback_data: "back_to_info" }]
@@ -1115,6 +1115,7 @@ async function handleResetConfirmation(ctx) {
 async function handleBroadcast(ctx) {
   if (!services.admin.isAdmin(ctx.from.id)) return;
 
+  // Создаем временное состояние для админа
   services.team.updateTeam(ctx.chat.id, {
     waitingForBroadcast: true,
     waitingForMembers: false,
@@ -1130,13 +1131,14 @@ async function handleBroadcast(ctx) {
  * @returns {Promise<void>} — отправляет сообщение всем командам и показывает статистику доставки.
  * 
  * @description
- * Только для админов. После отправки сбрасывает флаг waitingForBroadcast.
+ * После отправки сбрасывает флаг waitingForBroadcast.
  */
 async function handleBroadcastMessage(ctx) {
-  if (!ctx.team?.waitingForBroadcast) return;
-  if (!services.admin.isAdmin(ctx.from.id)) return;
+  const team = services.team.getTeam(ctx.chat.id);
+  if (!team?.waitingForBroadcast) return;
 
   const teams = services.team.getAllTeams();
+  const message = ctx.message.text;
 
   // Проверяем, есть ли команды для рассылки
   if (teams.length === 0) {
@@ -1147,26 +1149,77 @@ async function handleBroadcastMessage(ctx) {
     return;
   }
 
-  const successCount = await services.admin.broadcastMessage(
-    bot,
-    ctx.message.text,
-    teams
-  );
+  let successCount = 0;
+  let failedCount = 0;
+  const failedTeams = []; // Для отслеживания команд, которым не удалось отправить
+  const adminIds = services.admin.admins.map(id => Number(id));
 
+  // Фильтруем команды, исключая администраторов и самого отправителя
+  const teamsToNotify = teams.filter(team => {
+    const teamChatId = Number(team.chatId);
+    const senderChatId = Number(ctx.chat.id);
+
+    // Исключаем администраторов И текущего отправителя (чтобы админ не получал свою же рассылку)
+    return !adminIds.includes(teamChatId) && teamChatId !== senderChatId;
+  });
+
+  if (teamsToNotify.length === 0) {
+    await ctx.reply("❌ Нет команд для рассылки (все зарегистрированные - администраторы)");
+    services.team.updateTeam(ctx.chat.id, {
+      waitingForBroadcast: false,
+    });
+    return;
+  }
+
+  // Отправляем сообщение каждой команде с обработкой ошибок
+  for (const team of teamsToNotify) {
+    try {
+      await bot.telegram.sendMessage(
+        team.chatId,
+        `📢 *Сообщение от администратора:*\n\n${message}`,
+        { parse_mode: 'Markdown' }
+      );
+      successCount++;
+
+      // Небольшая задержка между отправками, чтобы избежать лимитов Telegram
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+    } catch (err) {
+      console.error(`Ошибка отправки команде ${team.teamName} (${team.chatId}):`, err.message);
+      failedCount++;
+      failedTeams.push({
+        name: team.teamName,
+        chatId: team.chatId,
+        error: err.message
+      });
+    }
+  }
+
+  // Сбрасываем флаг ожидания
   services.team.updateTeam(ctx.chat.id, {
     waitingForBroadcast: false,
   });
 
-  if (successCount > 0) {
-    await ctx.reply(locales.broadcastSuccess.replace("%d", successCount), {
-      parse_mode: "Markdown",
-      ...keyboards.admin.getKeyboard(services.admin.getGameStatus())
-    });
-  } else {
-    await ctx.reply("❌ Не удалось отправить рассылку ни одной команде", {
-      ...keyboards.admin.getKeyboard(services.admin.getGameStatus())
+  // Формируем детальный отчет для администратора
+  let reportMessage = `📊 *Отчет о рассылке:*\n\n`;
+  reportMessage += `✅ Успешно отправлено: ${successCount} из ${teamsToNotify.length} команд\n`;
+  reportMessage += `❌ Не удалось отправить: ${failedCount} команд\n\n`;
+
+  if (failedCount > 0) {
+    reportMessage += `*Команды с ошибками доставки:*\n`;
+    failedTeams.forEach((team, index) => {
+      reportMessage += `${index + 1}. ${team.name} (ID: ${team.chatId}) - ${team.error}\n`;
     });
   }
+
+  // Отправляем отчет администратору
+  await ctx.reply(
+    reportMessage,
+    {
+      parse_mode: 'Markdown',
+      ...keyboards.admin.getKeyboard(services.admin.getGameStatus())
+    }
+  );
 }
 
 /**
@@ -1467,13 +1520,13 @@ function readPrizes() {
     if (!fs.existsSync(dirPath)) {
       fs.mkdirSync(dirPath, { recursive: true });
     }
-    
+
     // Создаем файл, если он не существует
     if (!fs.existsSync(prizesFile)) {
       fs.writeFileSync(prizesFile, '{}');
       return {};
     }
-    
+
     const data = fs.readFileSync(prizesFile, 'utf8');
     const prizes = JSON.parse(data);
     return prizes && typeof prizes === 'object' ? prizes : {};
@@ -1668,7 +1721,7 @@ async function handleClearPrizesConfirm(ctx) {
   try {
     // Очищаем файл призов
     writePrizes({});
-    
+
     // Очищаем призы у всех команд
     const teams = services.team.getAllTeams();
     teams.forEach(team => {

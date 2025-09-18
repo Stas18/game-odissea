@@ -105,8 +105,8 @@ class AdminService {
    * 
    * @param {Object} bot — экземпляр Telegraf бота.
    * @param {string} message — текст сообщения для рассылки.
-   * @param {Array<{ chatId: number|string, teamName: string }>} teams — массив команд.
-   * @returns {number} — количество успешно отправленных сообщений.
+   * @param {Array<Object>} teams — массив команд.
+   * @returns {Promise<number>} — количество успешно отправленных сообщений.
    * 
    * @description
    * Исключает из рассылки команды, чей chatId совпадает с ID администраторов.
@@ -118,7 +118,10 @@ class AdminService {
     let successCount = 0;
     const adminIds = this.admins.map(id => Number(id));
 
-    const teamsToNotify = teams.filter(team => !adminIds.includes(Number(team.chatId)));
+    // Фильтруем команды, исключая администраторов
+    const teamsToNotify = teams.filter(team =>
+      !adminIds.includes(Number(team.chatId))
+    );
 
     if (teamsToNotify.length === 0) {
       return 0;
@@ -128,14 +131,15 @@ class AdminService {
       try {
         await bot.telegram.sendMessage(
           team.chatId,
-          `${locales.broadcastMessage.replace("%s", message)}`,
+          `📢 *Сообщение от администратора:*\n\n${message}`,
           { parse_mode: 'Markdown' }
         );
         successCount++;
       } catch (err) {
-        console.error(`${locales.broadcastError.replace('%s', team.teamName)}:`, err);
+        console.error(`Ошибка отправки команде ${team.teamName}:`, err.message);
       }
     }
+
     return successCount;
   }
 
