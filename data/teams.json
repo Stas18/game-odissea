@@ -1,1 +1,107 @@
-[]
+[
+  {
+    "chatId": 1147849296,
+    "teamName": "Хабенские",
+    "captainId": 1147849296,
+    "members": [
+      "Тони Старк",
+      "Брюс Уэйн",
+      "Питер Паркер"
+    ],
+    "points": 90,
+    "completedPoints": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+    ],
+    "currentPoint": null,
+    "currentQuestion": 0,
+    "totalQuestions": 0,
+    "startTime": "2025-09-18T21:19:22.694Z",
+    "completionTime": "2025-09-18T21:30:44.259Z",
+    "waitingForMembers": false,
+    "waitingForBroadcast": false,
+    "lastAnswerTime": "2025-09-18T21:30:43.977Z",
+    "questionPoints": {
+      "13_0": 7,
+      "12_0": 7,
+      "11_0": 7,
+      "10_0": 7,
+      "9_0": 7,
+      "8_0": 7,
+      "7_0": 7,
+      "6_0": 7,
+      "5_0": 7,
+      "4_0": 7,
+      "3_0": 7,
+      "2_0": 7,
+      "1_0": 7
+    },
+    "prizesReceived": [
+      8
+    ],
+    "pointActivationTime": "2025-09-18T21:30:42.819Z"
+  },
+  {
+    "chatId": 7644957461,
+    "teamName": "Безумцы с попкорном",
+    "captainId": 7644957461,
+    "members": [
+      "Питер Паркер"
+    ],
+    "points": 74,
+    "completedPoints": [
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1
+    ],
+    "currentPoint": null,
+    "currentQuestion": 0,
+    "totalQuestions": 0,
+    "startTime": "2025-09-18T21:20:09.389Z",
+    "completionTime": "2025-09-18T21:29:06.288Z",
+    "waitingForMembers": false,
+    "waitingForBroadcast": false,
+    "lastAnswerTime": "2025-09-18T21:29:05.984Z",
+    "questionPoints": {
+      "13_0": 7,
+      "12_0": 1,
+      "11_0": 6,
+      "9_0": 7,
+      "8_0": 7,
+      "7_0": 7,
+      "6_0": 7,
+      "5_0": 7,
+      "4_0": 7,
+      "3_0": 7,
+      "2_0": 7,
+      "1_0": 5
+    },
+    "prizesReceived": [
+      1,
+      4,
+      10
+    ],
+    "pointActivationTime": "2025-09-18T21:29:02.536Z"
+  }
+]

@@ -7,7 +7,7 @@ const questions = require("../data/questions.json");
  * Сервис для управления командами игроков: регистрация, сохранение прогресса, проверка кодов и ответов, начисление очков и т.д.
  * 
  * @description
- * Отвечает за загрузку/сохранение данных команд из файла `teams.json`, управление состоянием команд (очки, пройденные точки, мини-квесты),
+ * Отвечает за загрузку/сохранение данных команд из файла `teams.json`, управление состоянием команд (очки, пройденные точки),
  * а также за валидацию ответов и кодов. При инициализации загружает существующие команды и добавляет недостающие поля (например, `prizesReceived`).
  */
 class TeamService {
@@ -95,7 +95,7 @@ class TeamService {
    * @returns {Object} - Объект созданной команды. Если команда уже существует — возвращает существующую.
    * 
    * @description
-   * Инициализирует все необходимые поля команды: очки, массивы пройденных точек и квестов, тайминги и т.д.
+   * Инициализирует все необходимые поля команды: очки, массивы пройденных точек, тайминги и т.д.
    */
   registerTeam(chatId, teamName, captainId) {
     const existingTeam = this.getTeam(chatId);
@@ -108,9 +108,7 @@ class TeamService {
       members: [],
       points: 0,
       completedPoints: [],
-      completedMiniQuests: [],
       currentPoint: null,
-      currentMiniQuest: null,
       currentQuestion: 0,
       totalQuestions: 0,
       startTime: new Date().toISOString(),
@@ -118,7 +116,8 @@ class TeamService {
       waitingForMembers: false,
       waitingForBroadcast: false,
       lastAnswerTime: null,
-      questionPoints: {}
+      questionPoints: {},
+      prizesReceived: []
     };
 
     this.teams.push(newTeam);
@@ -207,27 +206,6 @@ class TeamService {
   }
 
   /**
-   * Отмечает мини-квест как завершённый для команды.
-   * 
-   * @param {number|string} chatId - Идентификатор чата команды.
-   * @param {string} questTask - Описание или идентификатор выполненного мини-квеста.
-   * @returns {boolean} - `true`, если квест успешно отмечен как выполненный, иначе `false`.
-   * 
-   * @description
-   * Сбрасывает `currentMiniQuest`. Не дублирует запись, если квест уже выполнен.
-   */
-  completeMiniQuest(chatId, questTask) {
-    const team = this.getTeam(chatId);
-    if (team && !team.completedMiniQuests.includes(questTask)) {
-      team.completedMiniQuests.push(questTask);
-      team.currentMiniQuest = null;
-      this.saveTeams();
-      return true;
-    }
-    return false;
-  }
-
-  /**
    * Возвращает список всех зарегистрированных команд.
    * 
    * @returns {Array<Object>} - Массив объектов команд.
@@ -279,20 +257,19 @@ class TeamService {
   }
 
   /**
-   * Возвращает прогресс команды: очки, пройденные точки, квесты, время игры и т.д.
+   * Возвращает прогресс команды: очки, пройденные точки, время игры и т.д.
    * 
    * @param {number|string} chatId - Идентификатор чата команды.
    * @returns {Object|null} - Объект с прогрессом команды или `null`, если команда не найдена.
    * 
    * @description
-   * Включает общее количество точек и мини-квестов (из внешних файлов), что позволяет отображать прогресс в процентах.
+   * Включает общее количество точек (из внешних файлов), что позволяет отображать прогресс в процентах.
    */
   getTeamProgress(chatId) {
     const team = this.getTeam(chatId);
     if (!team) return null;
 
     const questions = require("../data/questions.json");
-    const miniQuests = require("../data/miniQuests.json");
 
     return {
       teamName: team.teamName,
@@ -301,8 +278,6 @@ class TeamService {
       points: team.points,
       completedPoints: team.completedPoints,
       totalPoints: [...new Set(questions.map((q) => q.pointId))].length,
-      completedMiniQuests: team.completedMiniQuests,
-      totalMiniQuests: miniQuests.length,
       startTime: team.startTime,
       completionTime: team.completionTime,
       timeInGame: this.getGameTime(chatId),

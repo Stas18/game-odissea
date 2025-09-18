@@ -4,7 +4,6 @@ require("dotenv").config();
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const TeamService = require("./services/TeamService");
-const QuestService = require("./services/QuestService");
 const AdminService = require("./services/AdminService");
 const fs = require('fs');
 const path = require('path');
@@ -17,7 +16,6 @@ const keyboards = {
 };
 const services = {
   team: new TeamService(),
-  quest: new QuestService(),
   admin: new AdminService(),
 };
 
@@ -56,7 +54,6 @@ bot.action('clear_prizes_confirm', handleClearPrizesConfirm);
 bot.action('clear_prizes_cancel', handleClearPrizesCancel);
 bot.hears("▶ Начать квест", handleBeginQuest);
 bot.hears("🌍 Выбрать точку", handlePointSelection);
-bot.hears("🎲 Мини-квест", handleMiniQuest);
 bot.hears("📊 Прогресс", handleProgress);
 bot.hears("🏆 Топ команд", handleTopTeams);
 bot.hears("📊 Статистика", handleStats);
@@ -210,9 +207,6 @@ bot.on("text", async (ctx) => {
   }
   if (ctx.team?.waitingForBroadcast) {
     return handleBroadcastMessage(ctx);
-  }
-  if (ctx.team?.currentMiniQuest) {
-    return handleMiniQuestAnswer(ctx);
   }
   // Добавить проверку на активную точку без активных вопросов
   if (ctx.team?.currentPoint !== null && ctx.team?.currentPoint !== undefined &&
@@ -893,111 +887,7 @@ async function handleQuestionAnswer(ctx) {
 }
 
 /**
- * Активирует случайный доступный мини-квест.
- * 
- * @param {Object} ctx — контекст Telegram-бота.
- * @returns {Promise<void>} — отправляет задание мини-квеста или сообщение об отсутствии.
- * 
- * @description
- * Устанавливает текущий мини-квест в состояние команды.
- */
-async function handleMiniQuest(ctx) {
-  try {
-    const team = ctx.team;
-    if (!team) return;
-
-    const availableQuests = services.quest.getAvailableMiniQuests(
-      team.completedMiniQuests
-    );
-
-    if (availableQuests.length === 0) {
-      return ctx.reply(locales.miniQuestAllCompleted);
-    }
-
-    const miniQuest =
-      availableQuests[Math.floor(Math.random() * availableQuests.length)];
-
-    await ctx.reply(locales.miniQuestTask.replace("%s", miniQuest.task), {
-      parse_mode: "Markdown",
-    });
-
-    services.team.updateTeam(ctx.chat.id, {
-      currentMiniQuest: miniQuest,
-      waitingForMembers: false,
-      waitingForBroadcast: false,
-    });
-  } catch (err) {
-    console.error("Error in handleMiniQuest:", err);
-    ctx.reply(locales.errorOccurred);
-  }
-}
-
-/**
- * Обрабатывает ответ на мини-квест.
- * 
- * @param {Object} ctx — контекст Telegram-бота.
- * @returns {Promise<void>} — если верно — начисляет баллы и обновляет статус; если нет — штраф.
- * 
- * @description
- * После ответа сбрасывает состояние мини-квеста и возвращает главное меню.
- */
-async function handleMiniQuestAnswer(ctx) {
-  try {
-    const team = ctx.team;
-    if (!team?.currentMiniQuest) {
-      return ctx.reply(locales.noActiveMiniQuest);
-    }
-
-    const wasCorrect = ctx.message.text === team.currentMiniQuest.answer;
-    const updates = {
-      currentMiniQuest: null,
-      waitingForMembers: false,
-      waitingForBroadcast: false,
-    };
-
-    if (wasCorrect) {
-      const questCompleted = services.team.completeMiniQuest(
-        ctx.chat.id,
-        team.currentMiniQuest.task
-      );
-
-      if (questCompleted) {
-        services.team.addPoints(ctx.chat.id, 5);
-        await ctx.reply(
-          locales.miniQuestCorrect.replace("%d", team.points + 5),
-          {
-            parse_mode: "Markdown",
-            ...keyboards.mainMenu.getKeyboard(
-              services.admin.isAdmin(ctx.from.id),
-              services.admin.isGameActive,
-              true, // isTeamRegistered
-              false // waitingForMembers
-            )
-          }
-        );
-      } else {
-        await ctx.reply(locales.questAlreadyCompleted);
-      }
-    } else {
-      await ctx.reply(locales.miniQuestWrong, {
-        ...keyboards.mainMenu.getKeyboard(
-          services.admin.isAdmin(ctx.from.id),
-          services.admin.isGameActive,
-          true, // isTeamRegistered
-          false // waitingForMembers
-        )
-      });
-    }
-
-    services.team.updateTeam(ctx.chat.id, updates);
-  } catch (err) {
-    console.error("Error in handleMiniQuestAnswer:", err);
-    ctx.reply(locales.errorOccurred);
-  }
-}
-
-/**
- * Отображает прогресс команды: участники, баллы, пройденные точки и мини-квесты, время в игре.
+ * Отображает прогресс команды: участники, баллы, пройденные точки, время в игре.
  * 
  * @param {Object} ctx — контекст Telegram-бота.
  * @returns {Promise<void>} — отправляет статистику команды в формате Markdown.
@@ -1021,7 +911,6 @@ async function handleProgress(ctx) {
     `👥 *Участники:* ${progress.members.join(", ") || "нет"}`,
     `📊 *Баллы:* ${progress.points}`,
     `📍 *Пройдено точек:* ${progress.completedPoints.length}/${progress.totalPoints}`,
-    `🎲 *Пройдено мини-квестов:* ${progress.completedMiniQuests.length}/${progress.totalMiniQuests}`,
     `⏱ *В игре:* ${progress.timeInGame}`,
     `🕒 *Старт:* ${new Date(progress.startTime).toLocaleString()}`,
     completionInfo

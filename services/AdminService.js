@@ -152,15 +152,14 @@ class AdminService {
    *                   affectedChatIds — массив chatId команд, у которых был сброшен прогресс.
    * 
    * @description
-   * Сбрасываются только команды с ненулевым прогрессом (баллы, пройденные точки, мини-квесты).
+   * Сбрасываются только команды с ненулевым прогрессом (баллы, пройденные точки).
    * После сброса вызывает teamService.saveTeams() для сохранения изменений.
    * Модифицирует состояние teamService.teams напрямую.
    */
   resetAllTeams(teamService) {
     const teamsWithProgress = teamService.teams.filter(
       team => team.points > 0 ||
-        team.completedPoints.length > 0 ||
-        team.completedMiniQuests.length > 0
+        team.completedPoints.length > 0
     );
     const chatIds = teamsWithProgress.map(team => team.chatId);
 
@@ -182,15 +181,13 @@ class AdminService {
    * 
    * @description
    * Сортировка: по баллам → по количеству пройденных точек → по времени начала.
-   * Использует данные из questions.json и miniQuests.json для расчёта общего количества точек и квестов.
+   * Использует данные из questions.json для расчёта общего количества точек.
    * Формат времени в игре: "ччч + ммм" (если больше часа) или только "ммм".
    * Поддерживает локализацию через locales.
    */
   getTopTeams(teams, showAll = false) {
     const questions = require('../data/questions.json');
-    const miniQuests = require('../data/miniQuests.json');
     const totalPoints = [...new Set(questions.map(q => q.pointId))].length;
-    const totalMiniQuests = miniQuests.length;
 
     const sortedTeams = [...teams].sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points;
@@ -224,7 +221,7 @@ class AdminService {
       .join('\n\n');
 
     return `${locales.topTeamsHeader}\n\n${topTeams || locales.noData}\n\n` +
-      `${locales.totalStats.replace('%d', totalPoints).replace('%d', totalMiniQuests)}`;
+      `${locales.totalStats.replace('%d', totalPoints).replace('%d', 0)}`;
   }
 
   /**
@@ -257,7 +254,7 @@ class AdminService {
    * @returns {string} — отформатированное сообщение со статистикой всех команд.
    * 
    * @description
-   * Включает: имя команды, ID чата, капитана, участников, баллы, пройденные точки, мини-квесты, время в игре, время начала и (если есть) время завершения.
+   * Включает: имя команды, ID чата, капитана, участников, баллы, пройденные точки, время в игре, время начала и (если есть) время завершения.
    * Использует Markdown-форматирование.
    * Разделяет команды визуальным разделителем "────────────────".
    */
@@ -275,7 +272,6 @@ class AdminService {
         `${locales.members}: ${team.members.join(', ') || locales.none}\n` +
         `${locales.points}: ${team.points}\n` +
         `${locales.completedPoints}: ${team.completedPoints.join(', ') || locales.none}\n` +
-        `${locales.completedMiniQuests}: ${team.completedMiniQuests.length}\n` +
         `${locales.timeInGame}: ${timeInGame}\n` +
         `${locales.startTime}: ${new Date(team.startTime).toLocaleString()}` +
         completionInfo;
@@ -288,7 +284,7 @@ class AdminService {
    * Отправляет уведомление всем администраторам о завершении квеста командой.
    * 
    * @param {Object} team — объект команды, завершившей квест.
-   * @param {number} totalPoints — общее количество точек в квесте.
+   * @param {number} totalPoints — общее количество точек в квеста.
    * @returns {Promise<void>}
    * 
    * @description
