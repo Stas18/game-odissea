@@ -108,8 +108,17 @@
   "answerProcessError": "⚠️ Ошибка обработки ответа",
   "tooFastAnswer": "⏰ Слишком быстро! -3 балла за скорость",
   "prizes": {
+    "1": {
+      "promoCode": "-",
+      "cafeName": "Том Сойер",
+      "address": "улица Шмидта, 12, Севастополь",
+      "coordinates": {
+        "lat": 44.601138,
+        "lng": 33.520957
+      }
+    },
     "4": {
-      "promoCode": "Я уверен в себе",
+      "promoCode": "Кубрик",
       "cafeName": "Чизкейня",
       "address": "Большая Морская улица, 3, Севастополь",
       "coordinates": {
@@ -118,7 +127,7 @@
       }
     },
     "8": {
-      "promoCode": "Кубрик",
+      "promoCode": "Я уверен в себе",
       "cafeName": "ProTesto",
       "address": "проспект Нахимова, 10, Севастополь",
       "coordinates": {

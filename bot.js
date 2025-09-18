@@ -520,6 +520,35 @@ bot.action("donate", async (ctx) => {
   }
 });
 
+bot.hears("📋 Статус завершения", async (ctx) => {
+  if (!services.admin.isAdmin(ctx.from.id)) return;
+
+  const questions = require("./data/questions.json");
+  const totalPoints = [...new Set(questions.map(q => q.pointId))].length;
+  const teams = services.team.getAllTeams();
+  
+  const completedTeams = teams.filter(team => 
+    team.completedPoints && team.completedPoints.length >= totalPoints
+  );
+  const incompleteTeams = teams.filter(team => 
+    !team.completedPoints || team.completedPoints.length < totalPoints
+  );
+
+  let message = `📊 *Статус завершения квеста:*\n\n`;
+  message += `✅ Завершили: ${completedTeams.length} команд\n`;
+  message += `⏳ В процессе: ${incompleteTeams.length} команд\n\n`;
+
+  if (completedTeams.length > 0) {
+    message += `🏆 *Завершившие команды:*\n`;
+    completedTeams.forEach((team, index) => {
+      const time = services.admin.formatGameTime(team.startTime);
+      message += `${index + 1}. ${team.teamName} - ${time}\n`;
+    });
+  }
+
+  await ctx.reply(message, { parse_mode: 'Markdown' });
+});
+
 // Обработчик для копирования номера карты
 bot.action("copy_card_number", async (ctx) => {
   await ctx.answerCbQuery("Номер карты скопирован в буфер обмена");
@@ -1060,7 +1089,7 @@ async function processQuestionAnswer(ctx, isCorrect, options) {
 
       // Отправляем сообщение о штрафе
       await ctx.reply(getRandomTooFastMessage(), { parse_mode: "Markdown" });
-      
+
       // ОБНОВЛЯЕМ стоимость вопроса после штрафа
       services.team.updateQuestionPoints(
         ctx.chat.id,
@@ -1112,6 +1141,29 @@ async function processQuestionAnswer(ctx, isCorrect, options) {
         // Фиксируем время завершения
         services.team.setCompletionTime(ctx.chat.id);
         await showCompletionTime(ctx, updatedTeam);
+
+        // Уведомляем админа о завершении квеста этой командой
+        await services.admin.notifyAdminAboutCompletion(updatedTeam, totalPoints);
+
+        // Проверяем, все ли команды завершили квест
+        const allTeams = services.team.getAllTeams();
+        if (services.admin.checkAllTeamsCompleted(allTeams, totalPoints)) {
+          // Рассылаем глобальное уведомление
+          await services.admin.notifyAllTeamsAboutGlobalCompletion(bot, allTeams);
+
+          // Также уведомляем админов о полном завершении
+          for (const adminId of services.admin.admins) {
+            try {
+              await bot.telegram.sendMessage(
+                adminId,
+                "🎉 *Все команды завершили квест!* Миссия выполнена!",
+                { parse_mode: 'Markdown' }
+              );
+            } catch (err) {
+              console.error(`Ошибка уведомления админа ${adminId}:`, err);
+            }
+          }
+        }
       }
 
       // Проверяем и выдаем призы (если применимо) - ВАЖНО: только при завершении точки
@@ -1149,7 +1201,8 @@ async function processQuestionAnswer(ctx, isCorrect, options) {
 function readPrizes() {
   try {
     if (fs.existsSync(prizesFile)) {
-      return JSON.parse(fs.readFileSync(prizesFile, 'utf8'));
+      const data = fs.readFileSync(prizesFile, 'utf8');
+      return JSON.parse(data);
     }
     return {};
   } catch (err) {
@@ -1166,35 +1219,14 @@ function writePrizes(data) {
   }
 }
 
-function isPrizeAlreadyAwarded(threshold) {
-  const prizes = readPrizes();
-  return prizes[threshold] !== undefined;
-}
-
-function markPrizeAsAwarded(threshold, teamName, chatId) {
-  const prizes = readPrizes();
-  prizes[threshold] = {
-    teamName: teamName,
-    chatId: chatId,
-    awardedAt: new Date().toISOString()
-  };
-  writePrizes(prizes);
-}
-
 async function checkAndAwardPrizes(ctx, chatId, completedPointsCount) {
   const team = services.team.getTeam(chatId);
   if (!team) return;
 
-  const thresholds = [4, 8, 10];
+  const thresholds = [1, 4, 8, 10];
 
   // Проверяем, достигли ли мы одного из порогов призов
   if (!thresholds.includes(completedPointsCount)) {
-    return;
-  }
-
-  // Проверяем, не выдан ли уже приз за этот порог
-  if (isPrizeAlreadyAwarded(completedPointsCount)) {
-    console.log(`Приз за ${completedPointsCount} точек уже выдан другой команде`);
     return;
   }
 
@@ -1204,15 +1236,29 @@ async function checkAndAwardPrizes(ctx, chatId, completedPointsCount) {
     return;
   }
 
+  // Проверяем глобально, не был ли приз уже выдан другой команде
+  const prizes = readPrizes();
+  if (prizes[completedPointsCount]) {
+    console.log(`Приз за ${completedPointsCount} точек уже был выдан команде ${prizes[completedPointsCount].awardedTo}`);
+    return; // Тихо пропускаем, не уведомляя команду
+  }
+
   const prizeConfig = locales.prizes[completedPointsCount];
   if (!prizeConfig) {
     console.log(`Нет конфигурации приза для ${completedPointsCount} точек`);
     return;
   }
 
-  // Награждаем команду - только если приз еще не выдан
-  markPrizeAsAwarded(completedPointsCount, team.teamName, team.chatId);
+  // Награждаем команду - только если приз еще не был выдан никому
   services.team.addPrize(chatId, completedPointsCount);
+
+  // Записываем в глобальный файл призов
+  prizes[completedPointsCount] = {
+    awardedTo: team.teamName,
+    awardedToChatId: chatId,
+    awardedAt: new Date().toISOString()
+  };
+  writePrizes(prizes);
 
   // Формируем сообщение с промокодом
   const message = locales.prizeMessage
@@ -1241,7 +1287,7 @@ async function checkAndAwardPrizes(ctx, chatId, completedPointsCount) {
     ]
   ]);
 
-  // Отправляем сообщение с промокодом ТОЛЬКО команде-получателю
+  // Отправляем сообщение с промокодом команде-получателю
   try {
     await bot.telegram.sendMessage(
       chatId,
@@ -1263,7 +1309,7 @@ async function checkAndAwardPrizes(ctx, chatId, completedPointsCount) {
         adminId,
         `🎉 Команда "${team.teamName}" получила приз за ${completedPointsCount} точек!\n` +
         `Промокод: ${prizeConfig.promoCode}\n` +
-        `Кафе: ${prizeConfig.cafeName}`,
+        `Кафеня: ${prizeConfig.cafeName}`,
         { parse_mode: 'Markdown' }
       );
     } catch (err) {

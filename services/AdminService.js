@@ -166,6 +166,51 @@ class AdminService {
 
     return `${locales.fullStatsHeader.replace('%d', teams.length)}\n\n${stats || locales.noData}`;
   }
+
+  async notifyAdminAboutCompletion(team, totalPoints) {
+    const admins = this.admins;
+    const completionTime = this.formatGameTime(team.startTime);
+
+    const message = `🏁 *Команда завершила квест!*\n\n` +
+      `🏆 Команда: ${team.teamName}\n` +
+      `👥 Участники: ${team.members.join(', ') || 'нет'}\n` +
+      `📊 Баллы: ${team.points}\n` +
+      `📍 Точек пройдено: ${team.completedPoints.length}/${totalPoints}\n` +
+      `⏱ Время прохождения: ${completionTime}\n` +
+      `🕒 Завершила: ${new Date().toLocaleString()}`;
+
+    for (const adminId of admins) {
+      try {
+        await bot.telegram.sendMessage(adminId, message, { parse_mode: 'Markdown' });
+      } catch (err) {
+        console.error(`Ошибка отправки уведомления админу ${adminId}:`, err);
+      }
+    }
+  }
+
+  async notifyAllTeamsAboutGlobalCompletion(bot, teams) {
+    const message = `🎉 *Все команды завершили квест!*\n\n` +
+      `🏁 Миссия выполнена! Все участники успешно прошли все точки киноквеста.\n\n` +
+      `Ожидайте информации о награждении победителей!`;
+
+    for (const team of teams) {
+      try {
+        await bot.telegram.sendMessage(
+          team.chatId,
+          message,
+          { parse_mode: 'Markdown' }
+        );
+      } catch (err) {
+        console.error(`Ошибка отправки команде ${team.chatId}:`, err);
+      }
+    }
+  }
+
+  checkAllTeamsCompleted(teams, totalPoints) {
+    return teams.every(team =>
+      team.completedPoints && team.completedPoints.length >= totalPoints
+    );
+  }
 }
 
 module.exports = AdminService;

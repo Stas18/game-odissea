@@ -248,6 +248,36 @@ class TeamService {
     }
     return team.prizesReceived.length > 0;
   }
+
+  getAllCompletedTeams() {
+    return this.teams.filter(team =>
+      team.completedPoints && team.completedPoints.length > 0
+    );
+  }
+
+  getIncompleteTeams() {
+    const questions = require("../data/questions.json");
+    const totalPoints = [...new Set(questions.map(q => q.pointId))].length;
+
+    return this.teams.filter(team =>
+      !team.completedPoints || team.completedPoints.length < totalPoints
+    );
+  }
+
+  isPrizeAvailable(prizeThreshold) {
+  const prizesPath = path.join(__dirname, "../data/prizes.json");
+  try {
+    if (fs.existsSync(prizesPath)) {
+      const prizesData = fs.readFileSync(prizesPath, 'utf8');
+      const prizes = JSON.parse(prizesData);
+      return !prizes[prizeThreshold]; // Приз доступен, если его нет в глобальном файле
+    }
+    return true; // Файла нет - все призы доступны
+  } catch (err) {
+    console.error('Ошибка чтения глобальных призов:', err);
+    return false;
+  }
+}
 }
 
 module.exports = TeamService;
