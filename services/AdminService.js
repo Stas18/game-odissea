@@ -234,14 +234,16 @@ class AdminService {
    * Локализация единиц времени берётся из locales.hours и locales.minutes.
    */
   formatGameTime(startTime) {
+    if (!startTime) return "Не начали";
+
     const start = new Date(startTime);
     const now = new Date();
-    const diffMs = now - start;
-    const diffMins = Math.floor(diffMs / 60000);
-    const hours = Math.floor(diffMins / 60);
-    const mins = diffMins % 60;
+    const duration = now - start;
 
-    return hours > 0 ? `${hours}${locales.hours} ${mins}${locales.minutes}` : `${mins}${locales.minutes}`;
+    const hours = Math.floor(duration / 3600000);
+    const minutes = Math.floor((duration % 3600000) / 60000);
+
+    return `${hours}ч ${minutes}м`;
   }
 
   /**

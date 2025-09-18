@@ -52,6 +52,8 @@ bot.action(/^team_/, handleTeamSelection);
 bot.action("reset_confirm", handleResetConfirm);
 bot.action("reset_cancel", handleResetCancel);
 bot.action(/^point_/, handlePointActivation);
+bot.action('clear_prizes_confirm', handleClearPrizesConfirm);
+bot.action('clear_prizes_cancel', handleClearPrizesCancel);
 bot.hears("▶ Начать квест", handleBeginQuest);
 bot.hears("🌍 Выбрать точку", handlePointSelection);
 bot.hears("🎲 Мини-квест", handleMiniQuest);
@@ -64,6 +66,7 @@ bot.hears("🏆 Показать топ", handleTopTeams);
 bot.hears("⬅️ В главное меню", handleMainMenu);
 bot.hears("👑 Админ-панель", handleAdminPanel);
 bot.hears("ℹ️ Информация", handleInfo);
+bot.hears('🧹 Чистка призов', handleClearPrizesConfirmation);
 
 bot.use(async (ctx, next) => {
   if (services.team.isTeamRegistered(ctx.chat.id)) {
@@ -75,12 +78,26 @@ bot.use(async (ctx, next) => {
     }
   }
 
-  const exemptRoutes = ["/start", "team_", "/admin", "top_", "reset_", "ℹ️ Информация", "📊 Прогресс", "🏆 Топ команд"];
+  const infoRoutes = [
+    "contact_support", "contact_org", "about_project",
+    "show_rules", "show_map", "donate", "visit_site",
+    "back_to_info"
+  ];
+
+  const exemptRoutes = [
+    "/start", "team_", "/admin", "top_", "reset_",
+    "ℹ️ Информация", "📊 Прогресс", "🏆 Топ команд"
+  ];
+
+  const isInfoRoute = infoRoutes.some(route =>
+    ctx.callbackQuery?.data === route
+  );
+
   const isExempt = exemptRoutes.some(
     (route) =>
       ctx.message?.text?.startsWith(route) ||
       ctx.callbackQuery?.data?.startsWith(route)
-  );
+  ) || isInfoRoute;
 
   if (
     !isExempt &&
@@ -239,6 +256,9 @@ bot.action("contact_support", async (ctx) => {
     "📞 *Свяжитесь с организаторами:*\n@GeekLS\n+7 (978) 7975 939",
     {
       parse_mode: "Markdown",
+      ...Markup.inlineKeyboard([
+        [{ text: "⬅️ Назад", callback_data: "back_to_info" }]
+      ])
     }
   );
 });
@@ -246,7 +266,10 @@ bot.action("contact_support", async (ctx) => {
 bot.action("visit_site", async (ctx) => {
   await ctx.answerCbQuery();
   await ctx.reply(
-    "🌐 Посетите наш сайт: https://ulysses-club.github.io/odissea/"
+    "🌐 Посетите наш сайт: https://ulysses-club.github.io/odissea/",
+    Markup.inlineKeyboard([
+      [{ text: "⬅️ Назад", callback_data: "back_to_info" }]
+    ])
   );
 });
 
@@ -305,7 +328,12 @@ bot.action("show_rules", async (ctx) => {
     "– Минимум за вопрос: 1 балл\n\n" +
 
     "🌟 *Удачи в прохождении! Пусть сила (и хорошее кино) будут с вами!* 🎥",
-    { parse_mode: "Markdown" }
+    { 
+      parse_mode: "Markdown",
+      ...Markup.inlineKeyboard([
+        [{ text: "⬅️ Назад", callback_data: "back_to_info" }]
+      ])
+    }
   );
 });
 
@@ -340,16 +368,12 @@ bot.action("show_map", async (ctx) => {
   await ctx.answerCbQuery();
   try {
     await ctx.replyWithPhoto(
-      {
-        source: "./assets/map.jpg",
-      },
+      { source: "./assets/map.jpg" },
       {
         caption: locales.mapMessage,
         parse_mode: "Markdown",
         ...Markup.inlineKeyboard([
-          [
-            { text: "⬅️ Назад", callback_data: "back_to_info" }
-          ]
+          [{ text: "⬅️ Назад", callback_data: "back_to_info" }]
         ])
       }
     );
@@ -362,47 +386,18 @@ bot.action("show_map", async (ctx) => {
 bot.action("donate", async (ctx) => {
   await ctx.answerCbQuery();
   try {
-    // Отправляем фото с QR-кодом
     await ctx.replyWithPhoto(
-      {
-        source: "./assets/donat/qr_code.jpg",
-      },
+      { source: "./assets/donat/qr_code.jpg" },
       {
         caption: locales.donateMessage,
+        ...Markup.inlineKeyboard([
+          [{ text: "⬅️ Назад", callback_data: "back_to_info" }]
+        ])
       }
     );
   } catch (error) {
     console.error("Error sending QR code:", error);
   }
-});
-
-bot.hears("📋 Статус завершения", async (ctx) => {
-  if (!services.admin.isAdmin(ctx.from.id)) return;
-
-  const questions = require("./data/questions.json");
-  const totalPoints = [...new Set(questions.map(q => q.pointId))].length;
-  const teams = services.team.getAllTeams();
-
-  const completedTeams = teams.filter(team =>
-    team.completedPoints && team.completedPoints.length >= totalPoints
-  );
-  const incompleteTeams = teams.filter(team =>
-    !team.completedPoints || team.completedPoints.length < totalPoints
-  );
-
-  let message = `📊 *Статус завершения квеста:*\n\n`;
-  message += `✅ Завершили: ${completedTeams.length} команд\n`;
-  message += `⏳ В процессе: ${incompleteTeams.length} команд\n\n`;
-
-  if (completedTeams.length > 0) {
-    message += `🏆 *Завершившие команды:*\n`;
-    completedTeams.forEach((team, index) => {
-      const time = services.admin.formatGameTime(team.startTime);
-      message += `${index + 1}. ${team.teamName} - ${time}\n`;
-    });
-  }
-
-  await ctx.reply(message, { parse_mode: 'Markdown' });
 });
 
 // Обработчик для копирования номера карты
@@ -421,19 +416,22 @@ bot.action("about_project", async (ctx) => {
   await ctx.answerCbQuery();
   await ctx.reply(locales.aboutUs, {
     parse_mode: "Markdown",
+    ...Markup.inlineKeyboard([
+      [{ text: "⬅️ Назад", callback_data: "back_to_info" }]
+    ])
   });
 });
 
 bot.command("donate", async (ctx) => {
   try {
-    // Отправляем фото с QR-кодом
     await ctx.replyWithPhoto(
-      {
-        source: "./assets/donat/qr_code.jpg", // Путь к QR-коду
-      },
+      { source: "./assets/donat/qr_code.jpg" },
       {
         caption: locales.donateMessage,
         parse_mode: "Markdown",
+        ...Markup.inlineKeyboard([
+          [{ text: "⬅️ Назад", callback_data: "back_to_info" }]
+        ])
       }
     );
   } catch (error) {
@@ -527,6 +525,28 @@ async function showCompletionTime(ctx, team) {
  */
 async function handleInfo(ctx) {
   try {
+    const isFromMainMenu = !ctx.callbackQuery; // Если вызвано из главного меню, а не по callback
+
+    const keyboardButtons = [
+      [
+        { text: "📞 Поддержка", callback_data: "contact_support" },
+        { text: "🌐 Сайт", url: "https://ulysses-club.github.io/odissea/" },
+      ],
+      [
+        { text: "🎬 О проекте", callback_data: "about_project" },
+        { text: "📊 Правила", callback_data: "show_rules" },
+      ],
+      [
+        { text: locales.mapButton, callback_data: "show_map" },
+        { text: locales.donateButton, callback_data: "donate" }
+      ]
+    ];
+
+    // Добавляем кнопку "Назад" только если это не из главного меню
+    if (!isFromMainMenu) {
+      keyboardButtons.push([{ text: "⬅️ Назад", callback_data: "back_to_info" }]);
+    }
+
     await ctx.replyWithPhoto(
       {
         source: "./assets/donat/logo.jpg",
@@ -534,20 +554,7 @@ async function handleInfo(ctx) {
       {
         caption: locales.infoMessage,
         parse_mode: "Markdown",
-        ...Markup.inlineKeyboard([
-          [
-            { text: "📞 Поддержка", callback_data: "contact_support" },
-            { text: "🌐 Сайт", url: "https://ulysses-club.github.io/odissea/" },
-          ],
-          [
-            { text: "🎬 О проекте", callback_data: "about_project" },
-            { text: "📊 Правила", callback_data: "show_rules" },
-          ],
-          [
-            { text: locales.mapButton, callback_data: "show_map" },
-            { text: locales.donateButton, callback_data: "donate" }
-          ]
-        ]),
+        ...Markup.inlineKeyboard(keyboardButtons),
       }
     );
   } catch (error) {
@@ -676,7 +683,7 @@ async function handlePointSelection(ctx) {
   const pointButtons = availablePoints.map(pointId => {
     const pointDescription = keyboards.pointSelection.getPointDescription(pointId);
     return Markup.button.callback(
-      `📍 Точка ${pointId} - ${pointDescription}`,
+      `${pointDescription}`,
       `point_${pointId}`
     );
   });
@@ -1112,7 +1119,7 @@ async function handleBroadcast(ctx) {
     waitingForBroadcast: true,
     waitingForMembers: false,
   });
-  
+
   await ctx.reply(locales.broadcastPrompt, Markup.removeKeyboard());
 }
 
@@ -1451,17 +1458,33 @@ function getRandomWrongAnswerMessage() {
  * @returns {Object} — объект с выданными призами по количеству точек.
  * 
  * @description
- * При ошибке возвращает пустой объект.
+ * При ошибке возвращает пустой объект. Создает файл, если он не существует.
  */
 function readPrizes() {
   try {
-    if (fs.existsSync(prizesFile)) {
-      const data = fs.readFileSync(prizesFile, 'utf8');
-      return JSON.parse(data);
+    // Создаем директорию, если её нет
+    const dirPath = path.dirname(prizesFile);
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
     }
-    return {};
+    
+    // Создаем файл, если он не существует
+    if (!fs.existsSync(prizesFile)) {
+      fs.writeFileSync(prizesFile, '{}');
+      return {};
+    }
+    
+    const data = fs.readFileSync(prizesFile, 'utf8');
+    const prizes = JSON.parse(data);
+    return prizes && typeof prizes === 'object' ? prizes : {};
   } catch (err) {
     console.error('Ошибка чтения prizes.json:', err);
+    // Пытаемся создать чистый файл при ошибке
+    try {
+      fs.writeFileSync(prizesFile, '{}');
+    } catch (writeErr) {
+      console.error('Ошибка создания prizes.json:', writeErr);
+    }
     return {};
   }
 }
@@ -1591,6 +1614,93 @@ async function checkAndAwardPrizes(ctx, chatId, completedPointsCount) {
       console.error(`Ошибка отправки уведомления админу ${adminId}:`, err);
     }
   }
+}
+
+/**
+ * Запрашивает подтверждение очистки файла призов
+ * 
+ * @param {Object} ctx - контекст Telegram-бота
+ * @returns {Promise<void>}
+ * 
+ * @description
+ * Проверяет права администратора, проверяет наличие призов в файле,
+ * и отправляет сообщение с кнопками подтверждения очистки
+ */
+async function handleClearPrizesConfirmation(ctx) {
+  if (!services.admin.isAdmin(ctx.from.id)) return;
+
+  const prizes = readPrizes();
+  const prizeCount = Object.keys(prizes).length;
+
+  if (prizeCount === 0) {
+    return ctx.reply('🎁 Файл призов уже пуст!');
+  }
+
+  ctx.reply(
+    `⚠️ Вы уверены, что хотите очистить файл призов?\n\n` +
+    `Будет удалено ${prizeCount} выданных призов.\n\n` +
+    `Это действие нельзя отменить!`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [Markup.button.callback('✅ Да, очистить', 'clear_prizes_confirm')],
+          [Markup.button.callback('❌ Нет, отменить', 'clear_prizes_cancel')],
+        ],
+      },
+      parse_mode: 'Markdown',
+    }
+  );
+}
+
+/**
+ * Подтверждает и выполняет очистку файла призов
+ * 
+ * @param {Object} ctx - контекст Telegram-бота
+ * @returns {Promise<void>}
+ * 
+ * @description
+ * Проверяет права администратора, очищает файл призов и удаляет призы у всех команд,
+ * затем возвращает в админ-панель
+ */
+async function handleClearPrizesConfirm(ctx) {
+  if (!services.admin.isAdmin(ctx.from.id)) return;
+
+  try {
+    // Очищаем файл призов
+    writePrizes({});
+    
+    // Очищаем призы у всех команд
+    const teams = services.team.getAllTeams();
+    teams.forEach(team => {
+      if (team.prizesReceived && team.prizesReceived.length > 0) {
+        team.prizesReceived = [];
+      }
+    });
+    services.team.saveTeams();
+
+    await ctx.reply('✅ Файл призов успешно очищен! Все выданные призы удалены.');
+    await handleAdminPanel(ctx);
+  } catch (err) {
+    console.error('Ошибка при очистке призов:', err);
+    await ctx.reply('❌ Произошла ошибка при очистке призов.');
+  }
+}
+
+/**
+ * Отменяет очистку файла призов
+ * 
+ * @param {Object} ctx - контекст Telegram-бота
+ * @returns {Promise<void>}
+ * 
+ * @description
+ * Проверяет права администратора и отменяет операцию очистки призов,
+ * затем возвращает в админ-панель
+ */
+async function handleClearPrizesCancel(ctx) {
+  if (!services.admin.isAdmin(ctx.from.id)) return;
+
+  await ctx.reply('❌ Очистка призов отменена.');
+  await handleAdminPanel(ctx);
 }
 
 // ======================
