@@ -99,7 +99,7 @@ bot.use(async (ctx, next) => {
 
   const exemptRoutes = [
     "/start", "team_", "/admin", "top_", "reset_",
-    "ℹ️ Информация", "📊 Прогресс", "🏆 Топ команд"
+    "ℹ️ Информация", "📊 Прогресс"
   ];
 
   const isInfoRoute = infoRoutes.some(route =>
@@ -118,6 +118,18 @@ bot.use(async (ctx, next) => {
     !services.admin.isAdmin(ctx.from.id)
   ) {
     return ctx.reply(locales.gameNotStarted);
+  }
+
+  // Если игра активна и пользователь не зарегистрирован и не админ
+  if (
+    services.admin.isGameActive &&
+    !services.team.isTeamRegistered(ctx.chat.id) &&
+    !services.admin.isAdmin(ctx.from.id)
+  ) {
+    // Разрешаем только информационные команды
+    if (!isExempt && !isInfoRoute) {
+      return ctx.reply("❌ Регистрация закрыта. Игра уже началась!");
+    }
   }
 
   logger.logIncomingMessage(ctx);
@@ -458,6 +470,18 @@ bot.action(/^answer_/, async (ctx) => {
   }
 });
 
+bot.hears("🏆 Рассчитать призёров", handleCalculateWinners);
+
+// Добавьте новый обработчик
+async function handleCalculateWinners(ctx) {
+  if (!services.admin.isAdmin(ctx.from.id)) return;
+
+  const teams = services.team.getAllTeams();
+  const winners = services.admin.calculateWinners(teams);
+
+  await ctx.reply(winners, { parse_mode: "Markdown" });
+}
+
 /**
  * Обрабатывает команду /start — регистрацию или возврат в главное меню.
  * 
@@ -470,6 +494,23 @@ bot.action(/^answer_/, async (ctx) => {
  */
 async function handleStart(ctx) {
   logger.info(`Обработка команды /start для пользователя ${ctx.from.id}`);
+
+  // Если игра активна и пользователь не админ и не зарегистрирован
+  if (services.admin.isGameActive &&
+    !services.admin.isAdmin(ctx.from.id) &&
+    !services.team.isTeamRegistered(ctx.chat.id)) {
+    return ctx.reply(
+      "❌ Регистрация закрыта. Игра уже началась!\n\n" +
+      "Вы можете посмотреть информацию о квесте, но участвовать уже нельзя.",
+      keyboards.mainMenu.getKeyboard(
+        false, // isAdmin
+        true,  // isGameActive
+        false, // isTeamRegistered
+        false  // waitingForMembers
+      )
+    );
+  }
+
   if (services.team.isTeamRegistered(ctx.chat.id)) {
     const team = services.team.getTeam(ctx.chat.id);
     const isGameActive = services.admin.isGameActive;

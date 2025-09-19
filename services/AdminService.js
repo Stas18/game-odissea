@@ -361,6 +361,94 @@ class AdminService {
       team.completedPoints && team.completedPoints.length >= totalPoints
     );
   }
+
+  /**
+ * Рассчитывает и возвращает топ-3 призеров по указанным критериям.
+ * 
+ * @param {Array<Object>} teams — массив команд.
+ * @returns {string} — отформатированное сообщение с топ-3 призерами.
+ * 
+ * @description
+ * Сортировка: по баллам (по убыванию) → по времени завершения (по возрастанию) → по времени старта (по возрастанию).
+ * Форматирует время прохождения для завершивших и время в игре для не завершивших.
+ */
+  calculateWinners(teams) {
+    // Фильтруем команды, которые хотя бы начали игру
+    const activeTeams = teams.filter(team => team.startTime && (team.points > 0 || team.completedPoints.length > 0));
+
+    if (activeTeams.length === 0) {
+      return "🏆 *Призеры не определены*\n\nНет активных команд с баллами.";
+    }
+
+    // Сортируем команды по критериям: баллы → время завершения → время старта
+    const sortedTeams = [...activeTeams].sort((a, b) => {
+      // Сначала по баллам (по убыванию)
+      if (b.points !== a.points) {
+        return b.points - a.points;
+      }
+
+      // Если баллы равны, то по времени завершения (кто раньше завершил)
+      if (a.completionTime && b.completionTime) {
+        return new Date(a.completionTime) - new Date(b.completionTime);
+      }
+
+      // Если одна команда завершила, а другая нет - завершившая выше
+      if (a.completionTime && !b.completionTime) {
+        return -1;
+      }
+      if (!a.completionTime && b.completionTime) {
+        return 1;
+      }
+
+      // Если обе не завершили, то по времени старта (кто раньше начал)
+      return new Date(a.startTime) - new Date(b.startTime);
+    });
+
+    // Берем топ-3 команды
+    const top3 = sortedTeams.slice(0, 3);
+
+    // Формируем сообщение с призерами
+    let message = "🏆 *Топ-3 призера:*\n\n";
+
+    top3.forEach((team, index) => {
+      const place = index + 1;
+      const emoji = place === 1 ? "🥇" : place === 2 ? "🥈" : "🥉";
+
+      let timeInfo;
+      if (team.completionTime) {
+        // Команда завершила квест - показываем время прохождения
+        const start = new Date(team.startTime);
+        const end = new Date(team.completionTime);
+        const duration = end - start;
+        const hours = Math.floor(duration / 3600000);
+        const minutes = Math.floor((duration % 3600000) / 60000);
+        timeInfo = `⏱ Время прохождения: ${hours}ч ${minutes}м`;
+      } else {
+        // Команда не завершила - показываем время в игре
+        const start = new Date(team.startTime);
+        const now = new Date();
+        const duration = now - start;
+        const hours = Math.floor(duration / 3600000);
+        const minutes = Math.floor((duration % 3600000) / 60000);
+        timeInfo = `⏱ В игре: ${hours}ч ${minutes}м (не завершили)`;
+      }
+
+      message += `${emoji} *${place}. ${team.teamName}*\n`;
+      message += `   📊 Баллы: ${team.points}\n`;
+      message += `   ${timeInfo}\n`;
+
+      if (team.completedPoints.length > 0) {
+        message += `   📍 Пройдено точек: ${team.completedPoints.length}\n`;
+      }
+
+      message += "\n";
+    });
+
+    // Добавляем общую статистику
+    message += `\nВсего участвовало команд: ${activeTeams.length}`;
+
+    return message;
+  }
 }
 
 module.exports = AdminService;
