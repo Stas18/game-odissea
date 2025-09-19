@@ -44,3 +44,6 @@
 [2025-09-19T14:38:29.079Z] [INFO] Администратор запросил сброс прогресса | { userId: 1147849296, username: 'GeekLS', firstName: 'Stanislav' }
 [2025-09-19T14:38:53.220Z] [INFO] Обработка команды /start для пользователя 7644957461
 [2025-09-19T14:38:53.329Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T15:47:24.208Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T15:47:24.377Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T15:47:26.523Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }

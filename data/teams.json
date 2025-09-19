@@ -1,1 +1,22 @@
-[]
+[
+  {
+    "chatId": 1147849296,
+    "teamName": "Хабенские",
+    "captainId": 1147849296,
+    "members": [
+      "Питер Паркер"
+    ],
+    "points": 0,
+    "completedPoints": [],
+    "currentPoint": null,
+    "currentQuestion": 0,
+    "totalQuestions": 0,
+    "startTime": "2025-09-19T15:47:26.309Z",
+    "completionTime": null,
+    "waitingForMembers": false,
+    "waitingForBroadcast": false,
+    "lastAnswerTime": null,
+    "questionPoints": {},
+    "prizesReceived": []
+  }
+]
