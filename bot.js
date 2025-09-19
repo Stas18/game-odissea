@@ -25,7 +25,7 @@ const PENALTIES = {
   WRONG_ANSWER: 1,           // Штраф за ошибку
   TOO_FAST_ANSWER: 3,        // Штраф за скорость
   WRONG_CODE: 1,             // Штраф за неверный код
-  MIN_TIME_BETWEEN_ANSWERS: 5 // Минимальное время между ответами
+  MIN_TIME_BETWEEN_ANSWERS: 70 // Минимальное время между ответами
 };
 
 // Список команд для регистрации
@@ -60,7 +60,6 @@ bot.hears("🏆 Топ команд", handleTopTeams);
 bot.hears("📊 Статистика", handleStats);
 bot.hears("🔄 Сбросить прогресс", handleResetConfirmation);
 bot.hears("📢 Рассылка", handleBroadcast);
-bot.hears("🏆 Показать топ", handleTopTeams);
 bot.hears("⬅️ В главное меню", handleMainMenu);
 bot.hears("👑 Админ-панель", handleAdminPanel);
 bot.hears("ℹ️ Информация", handleInfo);
@@ -469,18 +468,6 @@ bot.action(/^answer_/, async (ctx) => {
     await ctx.answerCbQuery("Произошла ошибка, попробуйте еще раз");
   }
 });
-
-bot.hears("🏆 Рассчитать призёров", handleCalculateWinners);
-
-// Добавьте новый обработчик
-async function handleCalculateWinners(ctx) {
-  if (!services.admin.isAdmin(ctx.from.id)) return;
-
-  const teams = services.team.getAllTeams();
-  const winners = services.admin.calculateWinners(teams);
-
-  await ctx.reply(winners, { parse_mode: "Markdown" });
-}
 
 /**
  * Обрабатывает команду /start — регистрацию или возврат в главное меню.
@@ -1366,21 +1353,9 @@ async function processQuestionAnswer(ctx, isCorrect, options) {
         // Проверяем, все ли команды завершили квест
         const allTeams = services.team.getAllTeams();
         if (services.admin.checkAllTeamsCompleted(allTeams, totalPoints)) {
-          // Рассылаем глобальное уведомление
-          await services.admin.notifyAllTeamsAboutGlobalCompletion(bot, allTeams);
 
-          // Также уведомляем админов о полном завершении
-          for (const adminId of services.admin.admins) {
-            try {
-              await bot.telegram.sendMessage(
-                adminId,
-                "🎉 *Все команды завершили квест!* Миссия выполнена!",
-                { parse_mode: 'Markdown' }
-              );
-            } catch (err) {
-              logger.error(`Ошибка уведомления админа ${adminId}:`, err);
-            }
-          }
+          // Рассылаем глобальное уведомление о завершении
+          await services.admin.notifyAllTeamsAboutGlobalCompletion(bot, allTeams);
         }
       }
 

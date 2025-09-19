@@ -115,3 +115,38 @@
 [2025-09-19T16:51:09.293Z] [WARN] Приз за 10 точек уже был выдан команде Хабенские
 [2025-09-19T16:53:37.987Z] [INFO] Обработка команды /start для пользователя 7644957461
 [2025-09-19T16:54:33.889Z] [INFO] Администратор запросил сброс прогресса | { userId: 1147849296, username: 'GeekLS', firstName: 'Stanislav' }
+[2025-09-19T17:04:34.653Z] [INFO] Обработка команды /start для пользователя 7644957461
+[2025-09-19T17:04:34.763Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T17:04:35.823Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T17:05:03.622Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T17:05:03.732Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T17:05:05.833Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T17:05:43.476Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T17:08:10.687Z] [WARN] Приз за 4 точек уже был выдан команде Хабенские
+[2025-09-19T17:08:54.903Z] [WARN] Приз за 8 точек уже был выдан команде Хабенские
+[2025-09-19T17:09:11.089Z] [WARN] Приз за 10 точек уже был выдан команде Хабенские
+[2025-09-19T17:09:52.283Z] [INFO] Обработка команды /start для пользователя 7644957461
+[2025-09-19T17:10:28.672Z] [ERROR] Error handling question answer: | TypeError: this.broadcastWinnersToAllTeams is not a function
+    at processQuestionAnswer (C:\Users\Stanislav\Desktop\kinobot\bot.js:1386:22)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async handleQuestionAnswer (C:\Users\Stanislav\Desktop\kinobot\bot.js:957:3)
+    at async C:\Users\Stanislav\Desktop\kinobot\bot.js:466:5
+    at async execute (C:\Users\Stanislav\node_modules\telegraf\lib\composer.js:518:17)
+    at async C:\Users\Stanislav\node_modules\telegraf\lib\composer.js:519:21
+    at async execute (C:\Users\Stanislav\node_modules\telegraf\lib\composer.js:518:17)
+    at async C:\Users\Stanislav\node_modules\telegraf\lib\composer.js:519:21
+    at async execute (C:\Users\Stanislav\node_modules\telegraf\lib\composer.js:518:17)
+    at async C:\Users\Stanislav\node_modules\telegraf\lib\composer.js:519:21
+[2025-09-19T17:24:12.439Z] [INFO] Администратор запросил сброс прогресса | { userId: 1147849296, username: 'GeekLS', firstName: 'Stanislav' }
+[2025-09-19T17:24:23.227Z] [INFO] Обработка команды /start для пользователя 7644957461
+[2025-09-19T17:24:23.440Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T17:24:27.919Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T17:24:55.644Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T17:24:55.747Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T17:25:18.534Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T17:25:18.639Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T17:25:24.850Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T17:27:20.716Z] [INFO] Обработка команды /start для пользователя 7644957461
+[2025-09-19T17:29:46.273Z] [WARN] Приз за 4 точек уже был выдан команде Клуб 'Красная таблетка'
+[2025-09-19T17:30:21.570Z] [WARN] Приз за 8 точек уже был выдан команде Клуб 'Красная таблетка'
+[2025-09-19T17:30:42.045Z] [WARN] Приз за 10 точек уже был выдан команде Клуб 'Красная таблетка'
