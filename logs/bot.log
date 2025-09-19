@@ -1,0 +1,29 @@
+[2025-09-18T21:58:48.314Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T08:23:07.574Z] [ERROR] Необработанная ошибка в обработчике бота | {
+  error: 'logger.adminAction is not a function',
+  stack: 'TypeError: logger.adminAction is not a function\n' +
+    '    at handleResetConfirm (C:\\Users\\Stanislav\\Desktop\\kinobot\\bot.js:1181:10)\n' +
+    '    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n' +
+    '    at async execute (C:\\Users\\Stanislav\\node_modules\\telegraf\\lib\\composer.js:518:17)\n' +
+    '    at async C:\\Users\\Stanislav\\node_modules\\telegraf\\lib\\composer.js:519:21\n' +
+    '    at async execute (C:\\Users\\Stanislav\\node_modules\\telegraf\\lib\\composer.js:518:17)\n' +
+    '    at async C:\\Users\\Stanislav\\node_modules\\telegraf\\lib\\composer.js:519:21\n' +
+    '    at async execute (C:\\Users\\Stanislav\\node_modules\\telegraf\\lib\\composer.js:518:17)\n' +
+    '    at async C:\\Users\\Stanislav\\node_modules\\telegraf\\lib\\composer.js:519:21\n' +
+    '    at async execute (C:\\Users\\Stanislav\\node_modules\\telegraf\\lib\\composer.js:518:17)\n' +
+    '    at async C:\\Users\\Stanislav\\node_modules\\telegraf\\lib\\composer.js:519:21',
+  userId: '1147849296 (Stanislav )',
+  chatId: 1147849296,
+  updateType: 'callback_query'
+}
+[2025-09-19T08:23:23.384Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T08:23:23.546Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T08:23:25.159Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T08:23:34.808Z] [INFO] Обработка команды /start для пользователя 7644957461
+[2025-09-19T08:23:34.910Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T08:23:36.540Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T08:27:17.424Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T08:27:42.494Z] [WARN] Приз за 1 точек уже был выдан команде Безумцы с попкорном
+[2025-09-19T08:28:59.275Z] [WARN] Приз за 4 точек уже был выдан команде Безумцы с попкорном
+[2025-09-19T08:32:26.245Z] [WARN] Приз за 8 точек уже был выдан команде Хабенские
+[2025-09-19T08:32:43.796Z] [WARN] Приз за 10 точек уже был выдан команде Хабенские

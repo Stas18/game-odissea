@@ -7,6 +7,7 @@ const TeamService = require("./services/TeamService");
 const AdminService = require("./services/AdminService");
 const fs = require('fs');
 const path = require('path');
+const logger = require('./logger');
 const locales = require("./data/locales.json");
 const prizesFile = path.join(__dirname, './data/prizes.json');
 const keyboards = {
@@ -65,6 +66,21 @@ bot.hears("👑 Админ-панель", handleAdminPanel);
 bot.hears("ℹ️ Информация", handleInfo);
 bot.hears('🧹 Чистка призов', handleClearPrizesConfirmation);
 
+// В обработчике ошибок бота
+bot.catch((err, ctx) => {
+  const userInfo = ctx.from ? 
+    `${ctx.from.id} (${ctx.from.first_name} ${ctx.from.last_name || ''})` : 
+    'unknown';
+  
+  logger.error('Необработанная ошибка в обработчике бота', {
+    error: err.message,
+    stack: err.stack,
+    userId: userInfo,
+    chatId: ctx.chat?.id,
+    updateType: ctx.updateType
+  });
+});
+
 bot.use(async (ctx, next) => {
   if (services.team.isTeamRegistered(ctx.chat.id)) {
     ctx.team = services.team.getTeam(ctx.chat.id);
@@ -104,6 +120,7 @@ bot.use(async (ctx, next) => {
     return ctx.reply(locales.gameNotStarted);
   }
 
+  logger.logIncomingMessage(ctx);
   await next();
 });
 
@@ -165,7 +182,7 @@ bot.hears(locales.gameStartButton, async (ctx) => {
         )
       );
     } catch (err) {
-      console.error(`Ошибка отправки команде ${team.chatId}:`, err);
+      logger.error(`Ошибка отправки команде ${team.chatId}:`, err);
     }
   }
 });
@@ -193,7 +210,7 @@ bot.hears(locales.gameStopButton, async (ctx) => {
         )
       );
     } catch (err) {
-      console.error(`Ошибка отправки команде ${team.chatId}:`, err);
+      logger.error(`Ошибка отправки команде ${team.chatId}:`, err);
     }
   }
 });
@@ -372,7 +389,7 @@ bot.action("show_map", async (ctx) => {
       }
     );
   } catch (error) {
-    console.error("Error sending map:", error);
+    logger.error("Error sending map:", error);
     await ctx.reply("❌ Карта временно недоступна. Попробуйте позже.");
   }
 });
@@ -390,7 +407,7 @@ bot.action("donate", async (ctx) => {
       }
     );
   } catch (error) {
-    console.error("Error sending QR code:", error);
+    logger.error("Error sending QR code:", error);
   }
 });
 
@@ -429,7 +446,7 @@ bot.command("donate", async (ctx) => {
       }
     );
   } catch (error) {
-    console.error("Error sending QR code:", error);
+    logger.error("Error sending QR code:", error);
   }
 });
 
@@ -437,7 +454,7 @@ bot.action(/^answer_/, async (ctx) => {
   try {
     await handleQuestionAnswer(ctx);
   } catch (error) {
-    console.error("Error handling question answer:", error);
+    logger.error("Error handling question answer:", error);
     await ctx.answerCbQuery("Произошла ошибка, попробуйте еще раз");
   }
 });
@@ -453,6 +470,7 @@ bot.action(/^answer_/, async (ctx) => {
  * Если нет — предлагает выбрать название команды через inline-кнопки.
  */
 async function handleStart(ctx) {
+  logger.info(`Обработка команды /start для пользователя ${ctx.from.id}`);
   if (services.team.isTeamRegistered(ctx.chat.id)) {
     const team = services.team.getTeam(ctx.chat.id);
     const isGameActive = services.admin.isGameActive;
@@ -482,6 +500,11 @@ async function handleStart(ctx) {
     locales.welcomeMessage,
     Markup.inlineKeyboard(teamButtons, { columns: 2 })
   );
+
+  logger.info(`Команда /start от пользователя ${ctx.from.id}`, {
+    username: ctx.from.username,
+    first_name: ctx.from.first_name
+  });
 }
 
 /**
@@ -552,7 +575,7 @@ async function handleInfo(ctx) {
       }
     );
   } catch (error) {
-    console.error("Error in handleInfo:", error);
+    logger.error("Error in handleInfo:", error);
     await ctx.reply(locales.infoMessage, {
       parse_mode: "Markdown",
       ...Markup.inlineKeyboard([
@@ -625,6 +648,11 @@ async function handleTeamSelection(ctx) {
       true  // waitingForMembers = true
     )
   );
+
+  logger.info(`Команда /start от пользователя ${ctx.from.id}`, {
+    username: ctx.from.username,
+    first_name: ctx.from.first_name
+  });
 }
 
 /**
@@ -705,7 +733,7 @@ async function handlePointActivation(ctx) {
   try {
     await ctx.replyWithPhoto({ source: `./assets/point_${pointId}.jpg` });
   } catch (err) {
-    console.log("Фото недоступно");
+    logger.warn("Фото недоступно");
   }
 
   // Отправляем описание точки и инструкцию по вводу кода
@@ -1074,7 +1102,7 @@ async function handleBroadcastMessage(ctx) {
       await new Promise(resolve => setTimeout(resolve, 100));
 
     } catch (err) {
-      console.error(`Ошибка отправки команде ${team.teamName} (${team.chatId}):`, err.message);
+      logger.error(`Ошибка отправки команде ${team.teamName} (${team.chatId}):`, err.message);
       failedCount++;
       failedTeams.push({
         name: team.teamName,
@@ -1144,11 +1172,13 @@ async function handleResetConfirm(ctx) {
         Markup.removeKeyboard()
       );
     } catch (err) {
-      console.error(`Ошибка отправки команде ${chatId}:`, err);
+      logger.error(`Ошибка отправки команде ${chatId}:`, err);
     }
   }
 
   await handleAdminPanel(ctx);
+
+  logger.adminAction('Запрос сброса прогресса', ctx.from);
 }
 
 /**
@@ -1304,7 +1334,7 @@ async function processQuestionAnswer(ctx, isCorrect, options) {
                 { parse_mode: 'Markdown' }
               );
             } catch (err) {
-              console.error(`Ошибка уведомления админа ${adminId}:`, err);
+              logger.error(`Ошибка уведомления админа ${adminId}:`, err);
             }
           }
         }
@@ -1420,12 +1450,12 @@ function readPrizes() {
     const prizes = JSON.parse(data);
     return prizes && typeof prizes === 'object' ? prizes : {};
   } catch (err) {
-    console.error('Ошибка чтения prizes.json:', err);
+    logger.error('Ошибка чтения prizes.json:', err);
     // Пытаемся создать чистый файл при ошибке
     try {
       fs.writeFileSync(prizesFile, '{}');
     } catch (writeErr) {
-      console.error('Ошибка создания prizes.json:', writeErr);
+      logger.error('Ошибка создания prizes.json:', writeErr);
     }
     return {};
   }
@@ -1443,7 +1473,7 @@ function writePrizes(data) {
   try {
     fs.writeFileSync(prizesFile, JSON.stringify(data, null, 2));
   } catch (err) {
-    console.error('Ошибка записи prizes.json:', err);
+    logger.error('Ошибка записи prizes.json:', err);
   }
 }
 
@@ -1472,20 +1502,20 @@ async function checkAndAwardPrizes(ctx, chatId, completedPointsCount) {
 
   // Проверяем, не получала ли команда уже этот приз
   if (services.team.hasPrize(chatId, completedPointsCount)) {
-    console.log(`Команда уже получала приз за ${completedPointsCount} точек`);
+    logger.warn(`Команда уже получала приз за ${completedPointsCount} точек`);
     return;
   }
 
   // Проверяем глобально, не был ли приз уже выдан другой команде
   const prizes = readPrizes();
   if (prizes[completedPointsCount]) {
-    console.log(`Приз за ${completedPointsCount} точек уже был выдан команде ${prizes[completedPointsCount].awardedTo}`);
+    logger.warn(`Приз за ${completedPointsCount} точек уже был выдан команде ${prizes[completedPointsCount].awardedTo}`);
     return; // Тихо пропускаем, не уведомляя команду
   }
 
   const prizeConfig = locales.prizes[completedPointsCount];
   if (!prizeConfig) {
-    console.log(`Нет конфигурации приза для ${completedPointsCount} точек`);
+    logger.warn(`Нет конфигурации приза для ${completedPointsCount} точек`);
     return;
   }
 
@@ -1538,7 +1568,7 @@ async function checkAndAwardPrizes(ctx, chatId, completedPointsCount) {
       }
     );
   } catch (err) {
-    console.error(`Ошибка отправки приза команде ${chatId}:`, err);
+    logger.error(`Ошибка отправки приза команде ${chatId}:`, err);
   }
 
   // Также отправляем уведомление админам
@@ -1553,7 +1583,7 @@ async function checkAndAwardPrizes(ctx, chatId, completedPointsCount) {
         { parse_mode: 'Markdown' }
       );
     } catch (err) {
-      console.error(`Ошибка отправки уведомления админу ${adminId}:`, err);
+      logger.error(`Ошибка отправки уведомления админу ${adminId}:`, err);
     }
   }
 }
@@ -1623,7 +1653,7 @@ async function handleClearPrizesConfirm(ctx) {
     await ctx.reply('✅ Файл призов успешно очищен! Все выданные призы удалены.');
     await handleAdminPanel(ctx);
   } catch (err) {
-    console.error('Ошибка при очистке призов:', err);
+    logger.error('Ошибка при очистке призов:', err);
     await ctx.reply('❌ Произошла ошибка при очистке призов.');
   }
 }
@@ -1645,13 +1675,22 @@ async function handleClearPrizesCancel(ctx) {
   await handleAdminPanel(ctx);
 }
 
+process.on('uncaughtException', (error) => {
+  logger.error('Необработанное исключение:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Необработанный промис:', reason);
+});
+
 // ======================
 // Запуск бота
 // ======================
 bot
   .launch()
-  .then(() => console.log("🎬 Бот успешно запущен!"))
-  .catch((err) => console.error("Ошибка запуска бота:", err));
+  .then(() => logger.info("🎬 Бот успешно запущен!"))
+  .catch((err) => logger.error("Ошибка запуска бота:", err));
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
