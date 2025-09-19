@@ -236,10 +236,11 @@ class Logger {
    * @param {Object} admin - Объект администратора
    * @param {any} details - Детали действия
    */
-  logAdminAction(action, admin, details = null) {
+  adminAction(action, admin, details = null) {
     this.info(`Админ действие: ${action}`, {
       adminId: admin.id,
       adminName: `${admin.first_name} ${admin.last_name || ''}`,
+      username: admin.username || 'нет',
       details: details
     });
   }

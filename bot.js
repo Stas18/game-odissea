@@ -68,10 +68,10 @@ bot.hears('🧹 Чистка призов', handleClearPrizesConfirmation);
 
 // В обработчике ошибок бота
 bot.catch((err, ctx) => {
-  const userInfo = ctx.from ? 
-    `${ctx.from.id} (${ctx.from.first_name} ${ctx.from.last_name || ''})` : 
+  const userInfo = ctx.from ?
+    `${ctx.from.id} (${ctx.from.first_name} ${ctx.from.last_name || ''})` :
     'unknown';
-  
+
   logger.error('Необработанная ошибка в обработчике бота', {
     error: err.message,
     stack: err.stack,
@@ -1161,6 +1161,12 @@ async function handleMainMenu(ctx) {
 async function handleResetConfirm(ctx) {
   if (!services.admin.isAdmin(ctx.from.id)) return;
 
+  logger.info('Администратор запросил сброс прогресса', {
+    userId: ctx.from.id,
+    username: ctx.from.username,
+    firstName: ctx.from.first_name
+  });
+
   const result = services.admin.resetAllTeams(services.team);
   await ctx.reply(result.message, { parse_mode: "Markdown" });
 
@@ -1177,8 +1183,6 @@ async function handleResetConfirm(ctx) {
   }
 
   await handleAdminPanel(ctx);
-
-  logger.adminAction('Запрос сброса прогресса', ctx.from);
 }
 
 /**
