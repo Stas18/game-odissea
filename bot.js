@@ -25,7 +25,7 @@ const PENALTIES = {
   WRONG_ANSWER: 1,           // Штраф за ошибку
   TOO_FAST_ANSWER: 3,        // Штраф за скорость
   WRONG_CODE: 1,             // Штраф за неверный код
-  MIN_TIME_BETWEEN_ANSWERS: 70 // Минимальное время между ответами
+  MIN_TIME_BETWEEN_ANSWERS: 10 // Минимальное время между ответами
 };
 
 // Список команд для регистрации
@@ -470,6 +470,43 @@ bot.action(/^answer_/, async (ctx) => {
 });
 
 /**
+ * Устанавливает время начала текущего вопроса для корректного расчета штрафа
+ * 
+ * @param {number|string} chatId - Идентификатор чата команды
+ * @param {number|string} pointId - Идентификатор точки
+ * @param {number} questionIndex - Индекс вопроса
+ * @returns {boolean} - true если время установлено успешно
+ */
+function setQuestionStartTime(chatId, pointId, questionIndex) {
+  const team = services.team.getTeam(chatId);
+  if (team) {
+    if (!team.questionStartTimes) team.questionStartTimes = {};
+    const key = `${pointId}_${questionIndex}`;
+    team.questionStartTimes[key] = new Date().toISOString();
+    services.team.saveTeams();
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Получает время начала вопроса для расчета штрафа
+ * 
+ * @param {number|string} chatId - Идентификатор чата команды
+ * @param {number|string} pointId - Идентификатор точки
+ * @param {number} questionIndex - Индекс вопроса
+ * @returns {Date|null} - Время начала вопроса или null
+ */
+function getQuestionStartTime(chatId, pointId, questionIndex) {
+  const team = services.team.getTeam(chatId);
+  if (team && team.questionStartTimes) {
+    const key = `${pointId}_${questionIndex}`;
+    return team.questionStartTimes[key] ? new Date(team.questionStartTimes[key]) : null;
+  }
+  return null;
+}
+
+/**
  * Обрабатывает команду /start — регистрацию или возврат в главное меню.
  * 
  * @param {Object} ctx — контекст Telegram-бота.
@@ -829,12 +866,10 @@ async function handlePointCode(ctx) {
     const questions = require("./data/questions.json");
     const point = questions.find((p) => p.pointId === team.currentPoint);
 
-    // Устанавливаем время активации точки для отсчета времени первого вопроса
     services.team.updateTeam(ctx.chat.id, {
       currentQuestion: 0,
       totalQuestions: point.questions.length,
       lastAnswerTime: new Date().toISOString(),
-      pointActivationTime: new Date().toISOString() // Важно: фиксируем время активации для первого вопроса
     });
     await askQuestion(ctx, 0);
   } else {
@@ -869,6 +904,9 @@ async function askQuestion(ctx, questionIndex) {
 
   const key = `${ctx.team.currentPoint}_${questionIndex}`;
   const currentPoints = ctx.team.questionPoints?.[key] || 10;
+
+  // УСТАНАВЛИВАЕМ ВРЕМЯ НАЧАЛА ВОПРОСА ДЛЯ РАСЧЕТА ШТРАФА
+  setQuestionStartTime(ctx.chat.id, ctx.team.currentPoint, questionIndex);
 
   // Если это вопрос с вариантами ответов
   if (Array.isArray(question.options)) {
@@ -1401,18 +1439,19 @@ async function processQuestionAnswer(ctx, isCorrect, options) {
  * Для первого вопроса использует pointActivationTime, для остальных — lastAnswerTime.
  */
 async function checkTimePenalty(ctx, questionIndex) {
-  let referenceTime;
-
-  if (questionIndex === 0) {
-    // Для первого вопроса используем время активации точки
-    referenceTime = new Date(ctx.team.pointActivationTime);
-  } else {
-    // Для последующих вопросов используем время последнего ответа
-    referenceTime = new Date(ctx.team.lastAnswerTime || ctx.team.pointActivationTime);
+  // ИСПОЛЬЗУЕМ ВРЕМЯ НАЧАЛА ВОПРОСА ВМЕСТО ВРЕМЕНИ АКТИВАЦИИ ТОЧКИ
+  const questionStartTime = getQuestionStartTime(ctx.chat.id, ctx.team.currentPoint, questionIndex);
+  
+  if (!questionStartTime) {
+    // Если время начала вопроса не установлено, не применяем штраф
+    return {
+      hasPenalty: false,
+      timeDiff: 0
+    };
   }
 
   const now = new Date();
-  const timeDiff = (now - referenceTime) / 1000; // Разница в секундах
+  const timeDiff = (now - questionStartTime) / 1000; // Разница в секундах
 
   // Штрафуем если ответили слишком быстро
   return {

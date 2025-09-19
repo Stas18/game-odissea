@@ -117,7 +117,8 @@ class TeamService {
       waitingForBroadcast: false,
       lastAnswerTime: null,
       questionPoints: {},
-      prizesReceived: []
+      prizesReceived: [],
+      questionStartTimes: {}
     };
 
     this.teams.push(newTeam);
