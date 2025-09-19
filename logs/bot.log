@@ -2,3 +2,45 @@
 [2025-09-19T08:42:54.507Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
 [2025-09-19T08:42:59.627Z] [INFO] Обработка команды /start для пользователя 7644957461
 [2025-09-19T08:42:59.744Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T09:12:50.576Z] [INFO] Обработка команды /start для пользователя 7644957461
+[2025-09-19T09:12:50.578Z] [INFO] Обработка команды /start для пользователя 7644957461
+[2025-09-19T09:12:50.578Z] [INFO] Обработка команды /start для пользователя 863909091
+[2025-09-19T09:12:50.578Z] [INFO] Обработка команды /start для пользователя 7644957461
+[2025-09-19T09:12:50.744Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T09:12:50.903Z] [INFO] Команда /start от пользователя 863909091 | { username: undefined, first_name: 'Anastasia' }
+[2025-09-19T09:12:50.914Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T09:12:50.934Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T09:13:35.576Z] [INFO] Администратор запросил сброс прогресса | { userId: 863909091, username: undefined, firstName: 'Anastasia' }
+[2025-09-19T09:13:46.272Z] [INFO] Администратор запросил сброс прогресса | { userId: 1147849296, username: 'GeekLS', firstName: 'Stanislav' }
+[2025-09-19T09:13:58.272Z] [INFO] Администратор запросил сброс прогресса | { userId: 863909091, username: undefined, firstName: 'Anastasia' }
+[2025-09-19T09:14:02.314Z] [INFO] Обработка команды /start для пользователя 863909091
+[2025-09-19T09:14:02.437Z] [INFO] Команда /start от пользователя 863909091 | { username: undefined, first_name: 'Anastasia' }
+[2025-09-19T09:14:10.914Z] [INFO] Команда /start от пользователя 863909091 | { username: undefined, first_name: 'Anastasia' }
+[2025-09-19T09:17:48.050Z] [INFO] Обработка команды /start для пользователя 7644957461
+[2025-09-19T09:17:48.158Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T09:33:38.311Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T09:33:38.453Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T09:33:39.815Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T09:33:39.949Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T09:33:41.392Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T09:36:38.767Z] [INFO] Администратор запросил сброс прогресса | { userId: 863909091, username: undefined, firstName: 'Anastasia' }
+[2025-09-19T09:37:00.600Z] [INFO] Обработка команды /start для пользователя 863909091
+[2025-09-19T09:37:00.829Z] [INFO] Команда /start от пользователя 863909091 | { username: undefined, first_name: 'Anastasia' }
+[2025-09-19T09:37:03.322Z] [INFO] Команда /start от пользователя 863909091 | { username: undefined, first_name: 'Anastasia' }
+[2025-09-19T09:56:58.446Z] [INFO] Администратор запросил сброс прогресса | { userId: 1147849296, username: 'GeekLS', firstName: 'Stanislav' }
+[2025-09-19T09:57:06.365Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T09:57:06.463Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T09:57:12.478Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T09:57:12.582Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T09:58:50.039Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T10:04:23.176Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T10:21:37.288Z] [INFO] Администратор запросил сброс прогресса | { userId: 1147849296, username: 'GeekLS', firstName: 'Stanislav' }
+[2025-09-19T12:03:48.802Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T12:05:58.124Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T12:05:58.268Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T12:05:59.675Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T12:05:59.828Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T12:06:01.528Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T14:38:29.079Z] [INFO] Администратор запросил сброс прогресса | { userId: 1147849296, username: 'GeekLS', firstName: 'Stanislav' }
+[2025-09-19T14:38:53.220Z] [INFO] Обработка команды /start для пользователя 7644957461
+[2025-09-19T14:38:53.329Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
