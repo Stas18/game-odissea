@@ -25,7 +25,7 @@ const PENALTIES = {
   WRONG_ANSWER: 1,           // Штраф за ошибку
   TOO_FAST_ANSWER: 3,        // Штраф за скорость
   WRONG_CODE: 1,             // Штраф за неверный код
-  MIN_TIME_BETWEEN_ANSWERS: 77 // Минимальное время между ответами
+  MIN_TIME_BETWEEN_ANSWERS: 5 // Минимальное время между ответами
 };
 
 // Список команд для регистрации
@@ -1537,7 +1537,7 @@ async function checkAndAwardPrizes(ctx, chatId, completedPointsCount) {
   const team = services.team.getTeam(chatId);
   if (!team) return;
 
-  const thresholds = [1, 4, 8, 10];
+  const thresholds = [4, 8, 10];
 
   // Проверяем, достигли ли мы одного из порогов призов
   if (!thresholds.includes(completedPointsCount)) {

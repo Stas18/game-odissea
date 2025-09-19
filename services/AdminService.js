@@ -221,7 +221,7 @@ class AdminService {
       .join('\n\n');
 
     return `${locales.topTeamsHeader}\n\n${topTeams || locales.noData}\n\n` +
-      `${locales.totalStats.replace('%d', totalPoints).replace('%d', 0)}`;
+      `${locales.totalStats.replace('%d', totalPoints)}`;
   }
 
   /**

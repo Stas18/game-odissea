@@ -61,3 +61,57 @@
 [2025-09-19T16:02:27.768Z] [WARN] Приз за 4 точек уже был выдан команде Безумцы с попкорном
 [2025-09-19T16:04:20.395Z] [WARN] Приз за 8 точек уже был выдан команде Хабенские
 [2025-09-19T16:06:14.291Z] [WARN] Приз за 10 точек уже был выдан команде Безумцы с попкорном
+[2025-09-19T16:20:43.801Z] [INFO] Администратор запросил сброс прогресса | { userId: 1147849296, username: 'GeekLS', firstName: 'Stanislav' }
+[2025-09-19T16:20:53.929Z] [INFO] Обработка команды /start для пользователя 7644957461
+[2025-09-19T16:20:54.036Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T16:20:55.302Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T16:23:02.925Z] [INFO] Обработка команды /start для пользователя 7644957461
+[2025-09-19T16:23:48.187Z] [INFO] Обработка команды /start для пользователя 7644957461
+[2025-09-19T16:24:23.074Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T16:24:23.192Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T16:24:25.401Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T16:26:14.640Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T16:27:35.756Z] [ERROR] Ошибка запуска бота: | FetchError: request to https://api.telegram.org/bot8478463161:[REDACTED]/getMe failed, reason: read ECONNRESET
+    at ClientRequest.<anonymous> (C:\Users\Stanislav\node_modules\telegraf\node_modules\node-fetch\lib\index.js:1501:11)
+    at ClientRequest.emit (node:events:518:28)
+    at emitErrorEvent (node:_http_client:104:11)
+    at TLSSocket.socketErrorListener (node:_http_client:518:5)
+    at TLSSocket.emit (node:events:518:28)
+    at emitErrorNT (node:internal/streams/destroy:170:8)
+    at emitErrorCloseNT (node:internal/streams/destroy:129:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  type: 'system',
+  errno: 'ECONNRESET',
+  code: 'ECONNRESET'
+}
+[2025-09-19T16:38:00.329Z] [INFO] Администратор запросил сброс прогресса | { userId: 1147849296, username: 'GeekLS', firstName: 'Stanislav' }
+[2025-09-19T16:38:08.348Z] [INFO] Обработка команды /start для пользователя 7644957461
+[2025-09-19T16:38:28.353Z] [INFO] Обработка команды /start для пользователя 7644957461
+[2025-09-19T16:38:28.486Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T16:38:33.186Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T16:38:51.769Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T16:38:51.865Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T16:38:59.127Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T16:38:59.243Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T16:39:04.213Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T16:39:04.376Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T16:39:14.228Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T16:39:14.387Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T16:39:16.159Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T16:42:25.812Z] [INFO] Администратор запросил сброс прогресса | { userId: 1147849296, username: 'GeekLS', firstName: 'Stanislav' }
+[2025-09-19T16:42:35.409Z] [INFO] Обработка команды /start для пользователя 7644957461
+[2025-09-19T16:42:35.530Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T16:42:37.104Z] [INFO] Команда /start от пользователя 7644957461 | { username: undefined, first_name: 'Geek' }
+[2025-09-19T16:43:34.323Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T16:43:34.567Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T16:43:35.678Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T16:43:35.790Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T16:43:37.350Z] [INFO] Команда /start от пользователя 1147849296 | { username: 'GeekLS', first_name: 'Stanislav' }
+[2025-09-19T16:46:17.218Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T16:47:22.834Z] [WARN] Приз за 4 точек уже был выдан команде Офисные кинокрысы
+[2025-09-19T16:49:28.415Z] [INFO] Обработка команды /start для пользователя 1147849296
+[2025-09-19T16:49:49.919Z] [INFO] Обработка команды /start для пользователя 7644957461
+[2025-09-19T16:50:40.295Z] [WARN] Приз за 8 точек уже был выдан команде Хабенские
+[2025-09-19T16:51:09.293Z] [WARN] Приз за 10 точек уже был выдан команде Хабенские
+[2025-09-19T16:53:37.987Z] [INFO] Обработка команды /start для пользователя 7644957461
+[2025-09-19T16:54:33.889Z] [INFO] Администратор запросил сброс прогресса | { userId: 1147849296, username: 'GeekLS', firstName: 'Stanislav' }
