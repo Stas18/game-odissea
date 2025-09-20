@@ -25,7 +25,7 @@ const PENALTIES = {
   WRONG_ANSWER: 1,           // Штраф за ошибку
   TOO_FAST_ANSWER: 3,        // Штраф за скорость
   WRONG_CODE: 1,             // Штраф за неверный код
-  MIN_TIME_BETWEEN_ANSWERS: 30 // Минимальное время между ответами
+  MIN_TIME_BETWEEN_ANSWERS: 5 // Минимальное время между ответами
 };
 
 // Список команд для регистрации
