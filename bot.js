@@ -25,7 +25,7 @@ const PENALTIES = {
   WRONG_ANSWER: 1,           // Штраф за ошибку
   TOO_FAST_ANSWER: 3,        // Штраф за скорость
   WRONG_CODE: 1,             // Штраф за неверный код
-  MIN_TIME_BETWEEN_ANSWERS: 10 // Минимальное время между ответами
+  MIN_TIME_BETWEEN_ANSWERS: 30 // Минимальное время между ответами
 };
 
 // Список команд для регистрации
@@ -92,13 +92,13 @@ bot.use(async (ctx, next) => {
 
   const infoRoutes = [
     "contact_support", "contact_org", "about_project",
-    "show_rules", "show_map", "donate", "visit_site",
-    "back_to_info"
+    "show_rules", "donate", "visit_site",
+    "back_to_info", "show_map"
   ];
 
   const exemptRoutes = [
     "/start", "team_", "/admin", "top_", "reset_",
-    "ℹ️ Информация", "📊 Прогресс"
+    "ℹ️ Информация", "📊 Прогресс", "show_wifi"
   ];
 
   const isInfoRoute = infoRoutes.some(route =>
@@ -469,6 +469,25 @@ bot.action(/^answer_/, async (ctx) => {
   }
 });
 
+bot.action("show_wifi", async (ctx) => {
+  await ctx.answerCbQuery();
+  try {
+    await ctx.replyWithPhoto(
+      { source: "./assets/wifi_map.jpg" },
+      {
+        caption: locales.wifiMessage,
+        parse_mode: "Markdown",
+        ...Markup.inlineKeyboard([
+          [{ text: "⬅️ Назад", callback_data: "back_to_info" }]
+        ])
+      }
+    );
+  } catch (error) {
+    logger.error("Error sending WiFi map:", error);
+    await ctx.reply("❌ Карта Wi-Fi точек временно недоступна. Попробуйте позже.");
+  }
+});
+
 /**
  * Устанавливает время начала текущего вопроса для корректного расчета штрафа
  * 
@@ -619,6 +638,9 @@ async function handleInfo(ctx) {
       ],
       [
         { text: locales.mapButton, callback_data: "show_map" },
+        { text: locales.wifiButton, callback_data: "show_wifi" }
+      ],
+      [
         { text: locales.donateButton, callback_data: "donate" }
       ]
     ];
@@ -653,6 +675,9 @@ async function handleInfo(ctx) {
         ],
         [
           { text: locales.mapButton, callback_data: "show_map" },
+          { text: locales.wifiButton, callback_data: "show_wifi" }
+        ],
+        [
           { text: locales.donateButton, callback_data: "donate" }
         ]
       ]),
@@ -1441,7 +1466,7 @@ async function processQuestionAnswer(ctx, isCorrect, options) {
 async function checkTimePenalty(ctx, questionIndex) {
   // ИСПОЛЬЗУЕМ ВРЕМЯ НАЧАЛА ВОПРОСА ВМЕСТО ВРЕМЕНИ АКТИВАЦИИ ТОЧКИ
   const questionStartTime = getQuestionStartTime(ctx.chat.id, ctx.team.currentPoint, questionIndex);
-  
+
   if (!questionStartTime) {
     // Если время начала вопроса не установлено, не применяем штраф
     return {
